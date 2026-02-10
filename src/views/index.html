@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mon Chercheur d'Albums</title>
+    <style>
+        /* Effet de zoom au survol */
+        .card a { display: block; overflow: hidden; border-radius: 5px; }
+        .card img:hover { transform: scale(1.1); transition: transform 0.3s; cursor: pointer; }
+        
+        body { font-family: sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #222; color: white; }
+        h1 { text-align: center; color: #ff3e3e; } /* Rouge Last.fm */
+        
+        /* La barre de recherche */
+        form { text-align: center; margin-bottom: 40px; }
+        input { padding: 10px; width: 300px; border-radius: 20px; border: none; }
+        button { padding: 10px 20px; background: #ff3e3e; color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #d63333; }
+
+        /* La grille des résultats */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .card { background: #333; padding: 15px; border-radius: 10px; text-align: center; transition: transform 0.2s; }
+        .card:hover { transform: translateY(-5px); background: #444; }
+        .card img { border-radius: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .card h3 { font-size: 1.1em; margin: 10px 0 5px 0; }
+        .card p { color: #aaa; margin: 0; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+    <h1>🎵 RPM Music Search 🎵</h1>
+
+    <form action="/" method="GET">
+        <input type="text" name="search" placeholder="Ex: Daft Punk, Nirvana..." value="{{ searched }}">
+        <button type="submit">Rechercher</button>
+    </form>
+
+    <div class="grid">
+        {% for album in albums %}
+            <div class="card">
+                <a href="#">
+                    {% if album.image[2]['#text'] %}
+                        <img src="{{ album.image[2]['#text'] }}" alt="Cover">
+                    {% else %}
+                        <div style="height:174px; line-height:174px; background:#000;">Pas d'image</div>
+                    {% endif %}
+                </a>
+                <h3>{{ album.name }}</h3>
+                <p>{{ album.artist }}</p>
+            </div>
+        {% else %}
+            <p style="text-align:center; grid-column: 1/-1;">
+                {% if searched %}Aucun résultat trouvé pour "{{ searched }}" 😢{% else %}Lance une recherche ! 🚀{% endif %}
+            </p>
+        {% endfor %}
+    </div>
+
+</body>
+</html>
