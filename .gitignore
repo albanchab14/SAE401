@@ -1,0 +1,22 @@
+# --- Dépendances (Le plus lourd, à ne jamais envoyer) ---
+node_modules/
+package-lock.json
+
+# --- Sécurité (Tes mots de passe) ---
+.env
+
+# --- Logs et Debug (Les fichiers d'erreurs) ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs
+*.log
+
+# --- Système d'exploitation (Fichiers parasites) ---
+.DS_Store
+Thumbs.db
+
+# --- Autres dossiers générés (si tu en as plus tard) ---
+dist/
+build/
+coverage/
