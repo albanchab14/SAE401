@@ -1,0 +1,80 @@
+{% extends "layout.njk" %}
+
+{% block content %}
+<div class="page-content">
+  <div class="detail-5">
+    
+    <div class="section-6" style="display: flex; gap: 40px; align-items: flex-end; margin-bottom: 48px;">
+      <div class="container-7" style="width: 300px; height: 300px; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+        <img src="{{ album.image }}" style="width: 100%; height: 100%; object-fit: cover;">
+      </div>
+      
+      <div class="container-9">
+        <p style="color: var(--primary); text-transform: uppercase; letter-spacing: 1.2px; font-size: 12px; margin-bottom: 8px;">Album • {{ album.year }}</p>
+        <h1 style="font-size: 72px; font-weight: 800; line-height: 1; margin-bottom: 12px;">{{ album.title }}</h1>
+        <div style="display: flex; align-items: center; gap: 10px; color: var(--text-muted);">
+          <a href="/artiste/{{ album.artist | urlencode }}" style="color: white; font-weight: bold; font-size: 20px; text-decoration: none;">{{ album.artist }}</a>
+          <span>•</span>
+          <span>{{ album.trackCount }} titres</span>
+          <span>•</span>
+          <span>{{ album.totalDuration }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 48px;">
+      
+      <div style="flex: 2;">
+        <h2 style="margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+            <i data-lucide="list-music" style="color: var(--primary);"></i> Pistes
+        </h2>
+        <div style="background: rgba(24,24,27,0.4); border: 1px solid var(--border); border-radius: 24px; overflow: hidden;">
+          {% for track in album.tracks %}
+          <div style="display: flex; align-items: center; padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+            <span style="width: 40px; color: var(--text-muted);">{{ track.rank }}</span>
+            <div style="flex: 1;">
+                <a href="/details/{{ track.name | urlencode }}" style="color: white; text-decoration: none; font-weight: 600;">{{ track.name }}</a>
+            </div>
+            <div style="text-align: right; margin-right: 40px;">
+                <span style="color: var(--primary); font-size: 14px;">{{ track.playcount }}</span>
+                <p style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Ecoutes</p>
+            </div>
+            <span style="color: var(--text-muted); font-size: 14px; width: 50px; text-align: right;">{{ track.duration }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div style="flex: 1;">
+        <div style="background: #0c0c0e; border: 1px solid #1a1a1c; border-radius: 20px; padding: 24px; margin-bottom: 24px;">
+            <p style="font-size: 12px; color: #a1a1aa; font-weight: 800; margin-bottom: 20px; text-transform: uppercase;">Distribution des notes</p>
+            {% for i in [5,4,3,2,1] %}
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <div style="display: flex; gap: 2px;">
+                    {% for s in range(5) %}<i data-lucide="star" style="width:10px; fill: {% if s < i %}#f0b100{% else %}none{% endif %}; color: #f0b100;"></i>{% endfor %}
+                </div>
+                <div style="flex: 1; height: 4px; background: #1a1a1c; border-radius: 10px;">
+                    <div style="width: {{ 100 - (i*15) }}%; height: 100%; background: #f0b100; border-radius: 10px;"></div>
+                </div>
+                <span style="color: #a1a1aa; font-size: 12px;">{{ range(0, 5) | random }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="background: rgba(24,24,27,0.4); border: 1px solid var(--border); border-radius: 20px; padding: 24px;">
+            <h3 style="margin-bottom: 16px;">Informations</h3>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                <span style="color: var(--text-muted);">Sortie</span>
+                <span>{{ album.year }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-muted);">Label</span>
+                <span style="text-align: right;">XO / Republic</span>
+            </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

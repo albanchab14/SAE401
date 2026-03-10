@@ -79,16 +79,77 @@ body {
 /* --- CONTENU DE LA PAGE --- */
 .page-content { padding: 40px; max-width: 1200px; }
 
-/* --- HERO SECTION (Artiste à la une) --- */
+
+/* ========================================= */
+/* SECTION HERO (ACCUEIL)                    */
+/* ========================================= */
+
 .hero {
-  position: relative; height: 350px; border-radius: 20px; overflow: hidden; margin-bottom: 40px;
+  position: relative; 
+  height: 400px; 
+  border-radius: 24px; 
+  overflow: hidden; 
+  margin-bottom: 40px;
+  display: flex;
+  align-items: center; 
+  background-color: #121212;
 }
-.hero img { width: 100%; height: 100%; object-fit: cover; }
-.hero-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 100%); padding: 40px; display: flex; flex-direction: column; justify-content: flex-end; }
-.badge { display: inline-block; background: rgba(217, 70, 239, 0.2); color: var(--primary); border: 1px solid var(--primary); padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; margin-bottom: 16px; align-self: flex-start; }
-.hero h1 { font-size: 3rem; margin-bottom: 10px; }
-.hero p { color: var(--text-muted); max-width: 600px; margin-bottom: 20px; }
-.btn { background: var(--text-main); color: #000; padding: 10px 24px; border-radius: 8px; font-weight: bold; text-decoration: none; display: inline-block; }
+
+.hero img { 
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%; 
+  object-fit: cover; 
+  z-index: 1;
+  filter: brightness(0.5); 
+}
+
+.hero-overlay { 
+  position: relative;
+  z-index: 2; /* Pour passer devant l'image */
+  padding: 60px; 
+  width: 100%;
+}
+
+.hero h1 { 
+  font-size: 3.5rem; 
+  font-weight: 800;
+  margin-bottom: 10px; 
+  color: white;
+}
+
+/* --- LE BADGE (LA PASTILLE VIOLETTE) --- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(217, 70, 239, 0.2); 
+  color: var(--primary); 
+  border: 1px solid rgba(217, 70, 239, 0.4); 
+  padding: 6px 16px; 
+  border-radius: 50px; 
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+/* --- LE BOUTON BLANC COMPACT --- */
+.btn {
+  display: inline-block;
+  background-color: #ffffff;
+  color: #000000;
+  padding: 12px 32px;
+  border-radius: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  background-color: #f4f4f5;
+  transform: translateY(-2px);
+}
 
 /* --- GRILLE ARTISTES --- */
 .section-title { font-size: 1.5rem; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -250,3 +311,227 @@ body {
 .register-link:hover {
   color: var(--text-main);
 }
+
+
+
+/* ========================================= */
+/* PAGE EXPLORER (Recherche)                 */
+/* ========================================= */
+
+.explorer-container {
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+}
+
+/* --- PANNEAU FILTRES --- */
+.filters-panel {
+  width: 250px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 20px; /* Reste collé quand on scrolle */
+}
+
+.filter-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.filter-header h2 {
+  font-size: 1.5rem;
+}
+
+.filter-group {
+  margin-bottom: 30px;
+}
+
+.filter-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  margin-bottom: 15px;
+}
+
+.filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-pill {
+  background: var(--bg-panel);
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.filter-pill:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.filter-pill.active {
+  background: var(--hover-bg); /* Variable définie en haut du fichier */
+  color: var(--primary);
+  border-color: rgba(217, 70, 239, 0.3);
+  font-weight: bold;
+}
+
+/* --- PANNEAU RESULTATS --- */
+.results-panel {
+  flex: 1; /* Prend tout l'espace restant */
+}
+
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 30px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 15px;
+}
+
+.results-header h2 {
+  font-size: 1.8rem;
+}
+
+.results-count {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Badges et Meta (sur les cartes) */
+.rating-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  padding: 4px 8px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: var(--text-main);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.meta-tag {
+  background: var(--bg-dark);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  font-weight: bold;
+  border: 1px solid var(--border);
+}
+
+.meta-tag.year {
+  color: #71717a;
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 40px;
+}
+
+.page-btn {
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.page-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.page-btn.active {
+  background: var(--primary);
+  color: white;
+}
+
+
+
+/* ========================================= */
+/* BANNIERE MATCH (Images penchées)          */
+/* ========================================= */
+
+.tilted-img {
+  width: 110px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 20px;
+  box-shadow: 0 15px 25px -5px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1);
+  transition: opacity 0.4s ease-in-out, transform 0.3s ease; /* Animation fluide */
+}
+
+/* Petit effet au survol de la souris sur les pochettes */
+.tilted-img:hover {
+  transform: scale(1.1) rotate(0deg) translateY(0) !important;
+  z-index: 10 !important;
+}
+
+#btn-match:hover {
+  background-color: #9333ea !important;
+  transform: translateY(-2px);
+}
+
+
+
+/* ========================================= */
+/* Template fiche musique          */
+/* ========================================= */
+
+.stat-card {
+    background: var(--bg-panel);
+    padding: 20px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    flex: 1;
+    text-align: center;
+}
+.stat-label { color: var(--text-muted); font-size: 10px; letter-spacing: 1px; margin-bottom: 5px; }
+.stat-value { color: var(--primary); font-size: 24px; font-weight: bold; }
+
+.tag-pill {
+    background: #27272a;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    color: #a1a1aa;
+}
+
+.btn-details-white { background: white; color: black; border: none; padding: 10px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+.btn-details-dark { background: #18181b; color: white; border: 1px solid #27272a; padding: 10px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+
+.tech-item { margin-bottom: 10px; font-size: 14px; color: var(--text-main); }

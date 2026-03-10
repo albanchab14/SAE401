@@ -1,0 +1,28 @@
+{% extends "layout.njk" %}
+
+{% block content %}
+<div class="explorer-container" style="flex-direction: column; align-items: center; text-align: center; padding-top: 50px;">
+  
+  <h1 style="font-size: 2.5rem; margin-bottom: 10px; color: var(--primary);">C'est un Match ! 🎉</h1>
+  <p style="color: var(--text-muted); margin-bottom: 50px; font-size: 1.1rem;">Voici 3 pépites musicales tirées au hasard rien que pour vous.</p>
+
+  <div class="grid" style="width: 100%; max-width: 900px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px;">
+    {% for track in tracks %}
+    <div class="card" style="text-align: left;">
+      <div class="card-img-wrapper">
+        <img src="{{ track.image }}" alt="{{ track.title }}">
+      </div>
+      <h3 style="font-size: 1.2rem; margin-bottom: 8px;">{{ track.title }}</h3>
+      <p style="color: var(--primary); font-weight: bold;"><i data-lucide="mic" style="width: 14px; height: 14px;"></i> {{ track.artist }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div style="margin-top: 50px;">
+    <a href="/match" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+      <i data-lucide="refresh-cw" style="width: 18px; height: 18px;"></i> Relancer la roulette
+    </a>
+  </div>
+
+</div>
+{% endblock %}

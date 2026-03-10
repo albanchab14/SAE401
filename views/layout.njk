@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BPM - Accueil</title>
+  <title>BPM - Musique & Vibes</title>
   <link rel="stylesheet" href="/css/style.css">
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -16,18 +16,15 @@
     </div>
     
     <nav class="nav-menu">
-      <a href="/" class="nav-link active">
+      <a href="/" class="nav-link {% if page == 'home' %}active{% endif %}">
         <i data-lucide="home"></i> Accueil
       </a>
-      
-      <a href="/search" class="nav-link">
+      <a href="/search" class="nav-link {% if page == 'explorer' %}active{% endif %}">
         <i data-lucide="compass"></i> Explorer
       </a>
-      
       <a href="/profil" class="nav-link">
         <i data-lucide="user"></i> Profil
       </a>
-      
       <a href="/admin" class="nav-link">
         <i data-lucide="settings"></i> Admin
       </a>
@@ -37,31 +34,79 @@
       <img src="/images/image-user-161.png" alt="User" onerror="this.src='https://ui-avatars.com/api/?name=Alex+M&background=random'">
       <div class="user-info">
         <span class="user-name">Alex M.</span>
-        <a href="/logout" class="logout-btn">Déconnexion</a>
+        <a href="/connexion" class="logout-btn">Déconnexion</a>
       </div>
     </div>
   </aside>
 
   <main class="main-wrapper">
-    <header class="top-header" style="justify-content: space-between;">      <div class="search-bar" style="display: flex; justify-content: space-between; align-items: center;">
-        <span>Rechercher...</span>
-        <i data-lucide="search" style="width: 18px; height: 18px; color: #a1a1aa;"></i>
+    <header class="top-header" style="display: grid; grid-template-columns: 1fr 2fr 1fr; align-items: center; padding: 0 40px; height: 80px; background-color: var(--bg-dark); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1000;">
+      
+      <div class="header-left">
+        <button onclick="history.back()" style="background: none; border: none; cursor: pointer; color: var(--text-muted); display: flex; align-items: center;">
+          <i data-lucide="chevron-left" style="width: 28px; height: 28px;"></i>
+        </button>
       </div>
 
-      <div class="notifications" style="position: relative; cursor: pointer;">
-        <i data-lucide="bell" style="width: 24px; height: 24px; color: #f4f4f5; transition: 0.2s;" onmouseover="this.style.color='#d946ef'" onmouseout="this.style.color='#f4f4f5'"></i>
-        <span style="position: absolute; top: -2px; right: 2px; width: 8px; height: 8px; background-color: #d946ef; border-radius: 50%; border: 2px solid #09090b;"></span>
+      <div class="header-center" style="display: flex; justify-content: center; position: relative;">
+        <form action="/search" method="GET" style="position: relative; width: 100%; max-width: 450px;">
+          <i data-lucide="search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 18px; color: #52525c;"></i>
+          <input type="text" id="search-input" name="q" value="{{ query if query != 'Top' and query != 'Découverte' }}" placeholder="Rechercher..." autocomplete="off"
+                 style="width: 100%; background: #0c0c0e; border: 1px solid #1a1a1c; padding: 12px 16px 12px 48px; border-radius: 100px; color: white; outline: none;">
+          
+          <div id="suggestions" style="position: absolute; top: 110%; left: 0; width: 100%; background: #18181b; border: 1px solid #27272a; border-radius: 12px; display: none; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5);"></div>
+        </form>
+      </div>
+
+      <div class="header-right" style="display: flex; justify-content: flex-end;">
+        <div class="notifications" style="position: relative; cursor: pointer;">
+          <i data-lucide="bell" style="width: 24px;"></i>
+          <span style="position: absolute; top: -2px; right: 2px; width: 8px; height: 8px; background-color: #d946ef; border-radius: 50%;"></span>
+        </div>
       </div>
     </header>
 
     <div class="page-content">
-      {% block content %}
-      {% endblock %}
+      {% block content %}{% endblock %}
     </div>
   </main>
 
   <script>
     lucide.createIcons();
+
+    // AUTOCOMPLETE LOGIC
+    const input = document.getElementById('search-input');
+    const suggBox = document.getElementById('suggestions');
+
+// Dans le script de ton layout.njk, remplace la fonction input par celle-ci :
+input.addEventListener('input', async (e) => {
+    const val = e.target.value;
+    if (val.length < 2) { suggBox.style.display = 'none'; return; }
+
+    try {
+        // ON APPELLE LA NOUVELLE ROUTE SUGGEST
+        const response = await fetch(`/api/suggest?q=${encodeURIComponent(val)}`);
+        const data = await response.json();
+        
+        suggBox.innerHTML = '';
+        if(data.length === 0) { suggBox.style.display = 'none'; return; }
+
+        data.forEach(item => {
+            const div = document.createElement('div');
+            div.style = "padding: 12px 20px; cursor: pointer; border-bottom: 1px solid #27272a; color: white;";
+            div.innerHTML = `<strong>${item.title}</strong> <span style="color: #a1a1aa; font-size: 0.8rem;">(${item.artist})</span>`;
+            
+            div.onclick = () => {
+                const target = item.type === "artiste" ? `/artiste/${encodeURIComponent(item.title)}` : `/search?q=${encodeURIComponent(item.title)}&type=Album`;
+                window.location.href = target;
+            };
+            suggBox.appendChild(div);
+        });
+        suggBox.style.display = 'block';
+    } catch (err) { console.log(err); }
+});
+
+    document.addEventListener('click', (e) => { if (!input.contains(e.target)) suggBox.style.display = 'none'; });
   </script>
 </body>
 </html>

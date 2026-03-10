@@ -1,51 +1,72 @@
 {% extends "layout.njk" %}
 
 {% block content %}
+<div class="page-content">
 
   <section class="hero">
-    <img src="{{ heroArtist.image }}" alt="{{ heroArtist.name }}">
+    <img src="{{ heroArtist.image }}" alt="{{ heroArtist.name }}" class="hero-bg">
     <div class="hero-overlay">
-      
-      <span class="badge" style="display: flex; align-items: center; gap: 8px;">
-        <i data-lucide="trending-up" style="width: 16px; height: 16px;"></i>
-        Artiste à la Une
-      </span>
-      
+      <div class="badge">
+        <i data-lucide="trending-up"></i>
+        ARTISTE À LA UNE
+      </div>
       <h1>{{ heroArtist.name }}</h1>
-      <p>Découvrez les pépites musicales du moment sélectionnées par la communauté BPM.</p>
+      <p>Découvrez l'univers de {{ heroArtist.name }}, l'un des artistes les plus écoutés du moment sur BPM.</p>
       <div>
-        <a href="/details/{{ heroArtist.name }}" class="btn">Voir les détails</a>
+        <a href="/artiste/{{ heroArtist.name | urlencode }}" class="btn">
+          Voir les détails
+        </a>
       </div>
     </div>
   </section>
 
-  <div class="section-title">
-    <h2>Top Artistes</h2>
+  <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <h2 class="section-title">Artistes Populaires</h2>
   </div>
-  
   <div class="grid">
     {% for artist in topArtists %}
-    <a href="/details/{{ artist.name }}" class="card">
+    <a href="/artiste/{{ artist.name | urlencode }}" class="card">
       <div class="card-img-wrapper">
         <img src="{{ artist.image }}" alt="{{ artist.name }}">
       </div>
       <h3>{{ artist.name }}</h3>
-      
-      <p style="display: flex; align-items: center; gap: 6px;">
-        <i data-lucide="music" style="width: 14px; height: 14px;"></i>
-        {{ artist.listeners }} auditeurs
-      </p>
-      
+      <p>{{ artist.listeners }} auditeurs</p>
     </a>
     {% endfor %}
   </div>
 
-  <section class="banner">
-    <div>
-      <h2>Découvrez de nouveaux horizons</h2>
-      <p>Notre algorithme BPM analyse vos goûts pour vous proposer les pépites de demain.</p>
-      <button class="btn-primary">Lancer le Match</button>
+  <section class="banner" style="margin-top: 60px;">
+    <div class="banner-content">
+      <h2 style="font-size: 2rem; font-weight: 800;">Lancez votre Match Musical</h2>
+      <p style="margin-bottom: 24px; opacity: 0.8;">Trouvez l'album idéal pour votre humeur actuelle en un clic.</p>
+      <button id="btn-match" class="btn-primary">Lancer le Match</button>
+    </div>
+    
+    <div id="match-results" style="display: flex; gap: -20px; align-items: center;">
+      {% for item in initialMatch %}
+      <a href="/album/{{ item.artist | urlencode }}/{{ item.title | urlencode }}" class="match-link">
+        <img src="{{ item.image }}" class="tilted-img" style="transform: rotate({{ [-10, 5, -5][loop.index0] }}deg);">
+      </a>
+      {% endfor %}
     </div>
   </section>
 
+</div>
+
+<script>
+  // Script pour animer le bouton Match
+  document.getElementById('btn-match').addEventListener('click', async () => {
+    const res = await fetch('/api/match');
+    const data = await res.json();
+    const container = document.getElementById('match-results');
+    container.innerHTML = '';
+    data.forEach((item, i) => {
+      const angles = [-10, 5, -5];
+      container.innerHTML += `
+        <a href="/album/${encodeURIComponent(item.artist)}/${encodeURIComponent(item.title)}" class="match-link">
+          <img src="${item.image}" class="tilted-img" style="transform: rotate(${angles[i]}deg); opacity: 0;" onload="this.style.opacity='1'">
+        </a>`;
+    });
+  });
+</script>
 {% endblock %}
