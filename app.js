@@ -40,6 +40,25 @@ app.get('/connexion', (req, res) => {
     res.render('login.njk');
 });
 
+
+// Route pour la page Explorer (Recherche)
+app.get('/search', (req, res) => {
+    // On simule une recherche pour "The Weeknd"
+    const searchResults = [
+        { id: '1', title: 'Starboy', artist: 'The Weeknd', type: 'Album', year: '2016', rating: '4.8', image: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&h=400&fit=crop' },
+        { id: '2', title: 'Random Access Memories', artist: 'Daft Punk', type: 'Album', year: '2013', rating: '4.9', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop' },
+        { id: '3', title: 'After Hours', artist: 'The Weeknd', type: 'Album', year: '2020', rating: '4.7', image: 'https://images.unsplash.com/photo-1621360841013-c76831f1dbce?w=400&h=400&fit=crop' },
+        { id: '4', title: 'Motomami', artist: 'Rosalía', type: 'Album', year: '2022', rating: '4.5', image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=400&h=400&fit=crop' }
+    ];
+
+    res.render('search.njk', { 
+        query: "The Weeknd",
+        totalResults: 84,
+        results: searchResults 
+    });
+});
+
+
 // 5. Lancement du serveur
 app.listen(port, () => {
     console.log(`Serveur lancé sur http://localhost:${port}`);
