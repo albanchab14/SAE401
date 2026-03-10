@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BPM - Accueil</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="logo">
+      <i data-lucide="music-4" style="color: #d946ef;"></i>
+      BPM
+    </div>
+    
+    <nav class="nav-menu">
+      <a href="/" class="nav-link active">
+        <i data-lucide="home"></i> Accueil
+      </a>
+      
+      <a href="/search" class="nav-link">
+        <i data-lucide="compass"></i> Explorer
+      </a>
+      
+      <a href="/profil" class="nav-link">
+        <i data-lucide="user"></i> Profil
+      </a>
+      
+      <a href="/admin" class="nav-link">
+        <i data-lucide="settings"></i> Admin
+      </a>
+    </nav>
+
+    <div class="user-profile">
+      <img src="/images/image-user-161.png" alt="User" onerror="this.src='https://ui-avatars.com/api/?name=Alex+M&background=random'">
+      <div class="user-info">
+        <span class="user-name">Alex M.</span>
+        <a href="/logout" class="logout-btn">Déconnexion</a>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-wrapper">
+    <header class="top-header" style="justify-content: space-between;">      <div class="search-bar" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Rechercher...</span>
+        <i data-lucide="search" style="width: 18px; height: 18px; color: #a1a1aa;"></i>
+      </div>
+
+      <div class="notifications" style="position: relative; cursor: pointer;">
+        <i data-lucide="bell" style="width: 24px; height: 24px; color: #f4f4f5; transition: 0.2s;" onmouseover="this.style.color='#d946ef'" onmouseout="this.style.color='#f4f4f5'"></i>
+        <span style="position: absolute; top: -2px; right: 2px; width: 8px; height: 8px; background-color: #d946ef; border-radius: 50%; border: 2px solid #09090b;"></span>
+      </div>
+    </header>
+
+    <div class="page-content">
+      {% block content %}
+      {% endblock %}
+    </div>
+  </main>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+{% extends "layout.njk" %}
+
+{% block content %}
+
+  <section class="hero">
+    <img src="{{ heroArtist.image }}" alt="{{ heroArtist.name }}">
+    <div class="hero-overlay">
+      
+      <span class="badge" style="display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="trending-up" style="width: 16px; height: 16px;"></i>
+        Artiste à la Une
+      </span>
+      
+      <h1>{{ heroArtist.name }}</h1>
+      <p>Découvrez les pépites musicales du moment sélectionnées par la communauté BPM.</p>
+      <div>
+        <a href="/details/{{ heroArtist.name }}" class="btn">Voir les détails</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-title">
+    <h2>Top Artistes</h2>
+  </div>
+  
+  <div class="grid">
+    {% for artist in topArtists %}
+    <a href="/details/{{ artist.name }}" class="card">
+      <div class="card-img-wrapper">
+        <img src="{{ artist.image }}" alt="{{ artist.name }}">
+      </div>
+      <h3>{{ artist.name }}</h3>
+      
+      <p style="display: flex; align-items: center; gap: 6px;">
+        <i data-lucide="music" style="width: 14px; height: 14px;"></i>
+        {{ artist.listeners }} auditeurs
+      </p>
+      
+    </a>
+    {% endfor %}
+  </div>
+
+  <section class="banner">
+    <div>
+      <h2>Découvrez de nouveaux horizons</h2>
+      <p>Notre algorithme BPM analyse vos goûts pour vous proposer les pépites de demain.</p>
+      <button class="btn-primary">Lancer le Match</button>
+    </div>
+  </section>
+
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "layout.njk" %}
+
+{% block content %}
+<div class="login-container">
+  
+  <div class="login-box">
+    <div class="login-header">
+      <div class="login-icon-wrapper">
+        <i data-lucide="music" style="color: #d946ef; width: 32px; height: 32px;"></i>
+      </div>
+      <h2>Bon retour parmi nous !</h2>
+      <p>Connectez-vous pour retrouver vos favoris BPM.</p>
+    </div>
+
+    <form class="login-form" action="/login" method="POST">
+      
+      <div class="input-group">
+        <label>Adresse email</label>
+        <div class="input-wrapper">
+          <i data-lucide="mail" class="input-icon"></i>
+          <input type="email" name="email" placeholder="Entrez votre email" required>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Mot de passe</label>
+        <div class="input-wrapper">
+          <i data-lucide="lock" class="input-icon"></i>
+          <input type="password" name="password" placeholder="Votre mot de passe" required>
+          <i data-lucide="eye" class="input-icon-right" style="cursor: pointer;"></i>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit">
+        Se connecter <i data-lucide="arrow-right"></i>
+      </button>
+
+    </form>
+
+    <a href="/register" class="register-link">Pas encore de compte ? S'inscrire</a>
+  </div>
+
+</div>
+{% endblock %}
