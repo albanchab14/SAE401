@@ -353,8 +353,50 @@ app.post('/login', async (req, res) => {
     } catch (error) { res.render('login.njk', { page: 'login', error: "Erreur serveur." }); }
 });
 
-app.post('/register', (req, res) => {
-    res.send("Formulaire d'inscription reçu ! Regarde ton terminal Node.js.");
+// 4. Recevoir les données d'inscription (Quand on clique sur "Créer mon compte")
+app.post('/register', async (req, res) => {
+    // Attention : dans le HTML le champ s'appelle "username"
+    const { username, email, password } = req.body;
+
+    try {
+        // 1. On vérifie si l'email ou le pseudo existe déjà dans la base
+        const [existingUsers] = await db.query(
+            'SELECT * FROM users WHERE email = ? OR pseudo = ?', 
+            [email, username]
+        );
+        
+        // Si on trouve quelqu'un, on bloque l'inscription
+        if (existingUsers.length > 0) {
+            return res.render('register.njk', { 
+                page: 'register', 
+                error: "Cet email ou ce nom d'utilisateur est déjà utilisé." 
+            });
+        }
+
+        // 2. Si tout est bon, on l'insère dans la base de données
+        const [result] = await db.query(
+            'INSERT INTO users (pseudo, email, password, role) VALUES (?, ?, ?, ?)',
+            [username, email, password, 'utilisateur']
+        );
+
+        // 3. On le connecte automatiquement (création de la session VIP)
+        req.session.user = {
+            id: result.insertId, // On récupère l'ID tout neuf généré par MySQL
+            pseudo: username,
+            role: 'utilisateur',
+            avatar: null
+        };
+
+        // 4. On l'envoie sur la page d'accueil !
+        res.redirect('/');
+
+    } catch (error) {
+        console.error(error);
+        res.render('register.njk', { 
+            page: 'register', 
+            error: "Une erreur est survenue lors de l'inscription. Veuillez réessayer." 
+        });
+    }
 });
 
 app.get('/logout', (req, res) => {
