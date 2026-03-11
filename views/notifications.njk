@@ -1,0 +1,172 @@
+{% extends "layout.njk" %}
+
+{% block content %}
+<div class="notifications-page">
+    
+    <div class="notifications-header">
+        <h1>Notifications</h1>
+        {% if notifications.length > 0 %}
+        <button class="mark-read-btn">Tout marquer comme lu</button>
+        {% endif %}
+    </div>
+
+    <div class="notifications-list">
+        
+        {% if notifications.length > 0 %}
+            
+            {% for notif in notifications %}
+            <div class="notif-card">
+                <div class="notif-icon-wrapper" style="background-color: {{ notif.bgColor }};">
+                    <i data-lucide="{{ notif.icon }}" style="color: {{ notif.color }}; width: 20px;"></i>
+                </div>
+                <div class="notif-content">
+                    <p class="notif-text">
+                        <span class="notif-user">{{ notif.user }}</span> {{ notif.action }}
+                    </p>
+                    <span class="notif-time">{{ notif.time }}</span>
+                </div>
+            </div>
+            {% endfor %}
+
+        {% else %}
+            
+            <div class="empty-state">
+                <i data-lucide="bell-off" class="empty-icon"></i>
+                <h2>Aucune notification</h2>
+                <p>Vous êtes à jour ! Vos notifications apparaîtront ici quand vous en recevrez.</p>
+            </div>
+
+        {% endif %}
+        
+    </div>
+</div>
+
+<style>
+    .notifications-page {
+        padding: 40px;
+        max-width: 900px;
+        margin: 0 auto; /* Centre la page */
+        width: 100%;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .notifications-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 40px;
+    }
+
+    .notifications-header h1 {
+        color: #f4f4f5;
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        margin: 0;
+    }
+
+    .mark-read-btn {
+        background: transparent;
+        border: none;
+        color: #71717b;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+    .mark-read-btn:hover {
+        color: #e12afb; /* Violet BPM */
+    }
+
+    .notifications-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    /* CARTE DE NOTIFICATION */
+    .notif-card {
+        background-color: rgba(24, 24, 27, 0.4);
+        border: 1px solid rgba(39, 39, 42, 1);
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        transition: background 0.2s ease;
+    }
+
+    .notif-card:hover {
+        background-color: rgba(39, 39, 42, 0.6);
+    }
+
+    .notif-icon-wrapper {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .notif-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .notif-text {
+        color: #e4e4e7;
+        font-size: 15px;
+        margin: 0;
+    }
+
+    .notif-user {
+        color: #ffffff;
+        font-weight: 700;
+    }
+
+    .notif-time {
+        color: #71717b;
+        font-size: 13px;
+    }
+
+    /* DESIGN QUAND C'EST VIDE */
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        background-color: rgba(24, 24, 27, 0.2);
+        border: 1px dashed rgba(63, 63, 71, 0.5);
+        border-radius: 16px;
+    }
+
+    .empty-icon {
+        width: 48px;
+        height: 48px;
+        color: #3f3f46;
+        margin-bottom: 20px;
+    }
+
+    .empty-state h2 {
+        color: #f4f4f5;
+        font-size: 20px;
+        margin-bottom: 10px;
+    }
+
+    .empty-state p {
+        color: #a1a1aa;
+        font-size: 15px;
+    }
+</style>
+
+<script>
+    // Initialiser les icônes si elles ne le sont pas déjà
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+</script>
+{% endblock %}

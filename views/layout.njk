@@ -9,10 +9,10 @@
 </head>
 <body>
 
-  <aside class="sidebar">
-    <div class="logo">
-      <i data-lucide="music-4" style="color: #d946ef;"></i>
-      BPM
+<aside class="sidebar">
+    <div class="logo" style="cursor: pointer; display: flex; align-items: center;" onclick="window.location.href='/'">
+        <i data-lucide="music-2" style="color: #d946ef;"></i>
+        <span style="font-size: 24px; font-weight: 800; color: white; margin-left: 10px;">BPM</span>
     </div>
     
     <nav class="nav-menu">
@@ -80,8 +80,8 @@
       </div>
 
       <div class="header-right" style="display: flex; justify-content: flex-end;">
-        <div class="notifications" style="position: relative; cursor: pointer;">
-          <i data-lucide="bell" style="width: 24px;"></i>
+        <div class="notifications" style="position: relative; cursor: pointer;" onclick="window.location.href='/notifications'">
+          <i data-lucide="bell" style="width: 24px; color: white;"></i>
           <span style="position: absolute; top: -2px; right: 2px; width: 8px; height: 8px; background-color: #d946ef; border-radius: 50%;"></span>
         </div>
       </div>
@@ -99,33 +99,35 @@
     const input = document.getElementById('search-input');
     const suggBox = document.getElementById('suggestions');
 
-// Dans le script de ton layout.njk, remplace la fonction input par celle-ci :
-input.addEventListener('input', async (e) => {
-    const val = e.target.value;
-    if (val.length < 2) { suggBox.style.display = 'none'; return; }
+    input.addEventListener('input', async (e) => {
+        const val = e.target.value;
+        if (val.length < 2) { 
+            suggBox.style.display = 'none'; 
+            return; 
+        }
 
-    try {
-        // ON APPELLE LA NOUVELLE ROUTE SUGGEST
-        const response = await fetch(`/api/suggest?q=${encodeURIComponent(val)}`);
-        const data = await response.json();
-        
-        suggBox.innerHTML = '';
-        if(data.length === 0) { suggBox.style.display = 'none'; return; }
-
-        data.forEach(item => {
-            const div = document.createElement('div');
-            div.style = "padding: 12px 20px; cursor: pointer; border-bottom: 1px solid #27272a; color: white;";
-            div.innerHTML = `<strong>${item.title}</strong> <span style="color: #a1a1aa; font-size: 0.8rem;">(${item.artist})</span>`;
+        try {
+            const response = await fetch(`/api/suggest?q=${encodeURIComponent(val)}`);
+            const data = await response.json();
             
-            div.onclick = () => {
-                const target = item.type === "artiste" ? `/artiste/${encodeURIComponent(item.title)}` : `/search?q=${encodeURIComponent(item.title)}&type=Album`;
-                window.location.href = target;
-            };
-            suggBox.appendChild(div);
-        });
-        suggBox.style.display = 'block';
-    } catch (err) { console.log(err); }
-});
+            suggBox.innerHTML = '';
+            if(data.length === 0) { suggBox.style.display = 'none'; return; }
+
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "suggestion-item"; 
+                div.style = "padding: 12px 20px; cursor: pointer; border-bottom: 1px solid #27272a; color: white;";
+                div.innerHTML = `<strong>${item.title}</strong> <span style="color: #a1a1aa; font-size: 0.8rem;">(${item.artist})</span>`;
+                
+                div.onclick = () => {
+                    const target = item.type === "artiste" ? `/artiste/${encodeURIComponent(item.title)}` : `/search?q=${encodeURIComponent(item.title)}&type=Album`;
+                    window.location.href = target;
+                };
+                suggBox.appendChild(div);
+            });
+            suggBox.style.display = 'block';
+        } catch (err) { console.log(err); }
+    });
 
     document.addEventListener('click', (e) => { if (!input.contains(e.target)) suggBox.style.display = 'none'; });
   </script>

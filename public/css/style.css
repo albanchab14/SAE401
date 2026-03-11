@@ -313,6 +313,48 @@ body {
 }
 
 
+/* ========================================= */
+/* PAGE INSCRIPTION                 */
+/* ========================================= */
+
+.auth-icon-glow {
+  background: linear-gradient(135deg, #d946ef, #8b5cf6);
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto 20px auto;
+  / L'ombre qui fait l'effet de lumière (glow) /
+  box-shadow: 0 0 25px rgba(217, 70, 239, 0.5); 
+}
+
+.btn-submit-purple {
+  background: linear-gradient(to right, #d946ef, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  transition: 0.3s;
+  margin-top: 10px;
+  / L'ombre sous le bouton /
+  box-shadow: 0 4px 15px rgba(217, 70, 239, 0.4);
+}
+
+.btn-submit-purple:hover {
+  box-shadow: 0 6px 25px rgba(217, 70, 239, 0.7);
+  transform: translateY(-2px); / Petit effet de soulèvement au survol */
+}
+
+
 
 /* ========================================= */
 /* PAGE EXPLORER (Recherche)                 */
@@ -535,3 +577,31 @@ body {
 .btn-details-dark { background: #18181b; color: white; border: 1px solid #27272a; padding: 10px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; }
 
 .tech-item { margin-bottom: 10px; font-size: 14px; color: var(--text-main); }
+
+
+    .btn-share-figma {
+        background: rgba(24, 24, 27, 0.4); /* Fond sombre transparent */
+        border: 1px solid rgba(63, 63, 71, 0.8); /* Bordure fine grise */
+        color: #f4f4f5;
+        padding: 8px 20px;
+        border-radius: 12px;
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        backdrop-filter: blur(8px); /* Effet flou sous le bouton */
+    }
+
+    .btn-share-figma:hover {
+        background: rgba(39, 39, 42, 0.6);
+        border-color: #e12afb; /* Lueur violette au survol */
+        transform: translateY(-2px);
+    }
+
+    .btn-share-figma i {
+        color: #f4f4f5;
+    }

@@ -2,14 +2,13 @@
 
 {% block content %}
 <div class="login-container">
-  
   <div class="login-box">
     <div class="login-header">
-      <div class="login-icon-wrapper">
-        <i data-lucide="music" style="color: #d946ef; width: 32px; height: 32px;"></i>
+      <div class="auth-icon-glow">
+        <i data-lucide="user" style="color: white; width: 32px; height: 32px;"></i>
       </div>
-      <h2>Bon retour parmi nous !</h2>
-      <p>Connectez-vous pour retrouver vos favoris BPM.</p>
+      <h2>Bon retour !</h2>
+      <p>Connectez-vous pour retrouver vos pépites.</p>
     </div>
 
     {% if error %}
@@ -20,31 +19,28 @@
     {% endif %}
     
     <form class="login-form" action="/login" method="POST">
-      
       <div class="input-group">
-        <label>Adresse email</label>
         <div class="input-wrapper">
           <i data-lucide="mail" class="input-icon"></i>
-          <input type="email" name="email" placeholder="Entrez votre email" required>
+          <input type="email" name="email" placeholder="Adresse email" required>
         </div>
       </div>
 
       <div class="input-group">
-        <label>Mot de passe</label>
         <div class="input-wrapper">
           <i data-lucide="lock" class="input-icon"></i>
-          <input type="password" name="password" placeholder="Votre mot de passe" required>
+          <input type="password" name="password" placeholder="Mot de passe" required>
           <i data-lucide="eye" class="input-icon-right" style="cursor: pointer;"></i>
         </div>
       </div>
 
-      <button type="submit" class="btn-submit">
-        Se connecter <i data-lucide="arrow-right"></i>
+      <button type="submit" class="btn-submit-purple">
+        Se connecter <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
       </button>
 
     </form>
 
-    <a href="/register" class="register-link">Pas encore de compte ? S'inscrire</a>
+    <a href="/inscription" class="register-link" style="display: block; text-align: center; margin-top: 20px; color: #a1a1aa; text-decoration: none;">Pas encore de compte ? S'inscrire</a>
   </div>
 
 </div>

@@ -13,7 +13,7 @@
       <h3 class="filter-title"><i data-lucide="music-2" style="width: 16px;"></i> Genres</h3>
       <div class="filter-pills">
         {% for tag in ['Tous', 'Pop', 'Hip-Hop', 'Electronic', 'Jazz', 'Rock'] %}
-          <a href="/search?q={{ query }}&type={{ currentType }}&years={{ currentYears }}&tag={{ tag }}" 
+          <a href="/search?q={{ query or '' }}&type={{ currentType or 'Album' }}&years={{ currentYears or 'Toutes' }}&tag={{ tag }}" 
              class="filter-pill {% if currentTag == tag or (tag == 'Tous' and not currentTag) %}active{% endif %}">
             {{ tag }}
           </a>
@@ -25,7 +25,7 @@
       <h3 class="filter-title"><i data-lucide="calendar" style="width: 16px;"></i> Années</h3>
       <div class="filter-pills">
         {% for y in ['Toutes', '2024-2026', '2020-2023', '2010-2019', '2000s'] %}
-          <a href="/search?q={{ query }}&type={{ currentType }}&tag={{ currentTag }}&years={{ y }}" 
+          <a href="/search?q={{ query or '' }}&type={{ currentType or 'Album' }}&tag={{ currentTag or 'Tous' }}&years={{ y }}" 
              class="filter-pill {% if currentYears == y or (y == 'Toutes' and not currentYears) %}active{% endif %}">
             {{ y }}
           </a>
@@ -37,7 +37,7 @@
       <h3 class="filter-title"><i data-lucide="disc" style="width: 16px;"></i> Type</h3>
       <div class="filter-pills">
         {% for t in ['Album', 'Artiste', 'Musique', 'Playlist'] %}
-          <a href="/search?q={{ query }}&tag={{ currentTag }}&years={{ currentYears }}&type={{ t }}" 
+          <a href="/search?q={{ query or '' }}&tag={{ currentTag or 'Tous' }}&years={{ currentYears or 'Toutes' }}&type={{ t }}" 
              class="filter-pill {% if currentType == t or (not currentType and t == 'Album') %}active{% endif %}">
             {{ t }}
           </a>
@@ -48,7 +48,7 @@
 
   <div class="results-panel">
     <div class="results-header">
-      <h2>Résultats pour "{{ query }}"</h2>
+      <h2>Résultats pour "{{ query or 'Tout explorer' }}"</h2>
       <span class="results-count">{{ results.length }} résultats</span>
     </div>
 
@@ -67,7 +67,6 @@
             <div class="card-img-wrapper" style="{% if item.type == 'Artiste' %}border-radius: 50%; aspect-ratio: 1/1; overflow: hidden;{% endif %}">
               <img src="{{ item.image }}" alt="{{ item.title }}" 
                    onerror="this.src='https://ui-avatars.com/api/?name={{ item.title | urlencode }}&background=random&size=300'">
-              
               {% if item.type != "Artiste" %}
               <div class="rating-badge">
                 <i data-lucide="star" style="width: 12px; fill: #eab308; color: #eab308;"></i>
@@ -84,17 +83,11 @@
         {% endfor %}
       {% else %}
         <div style="grid-column: 1/-1; text-align: center; padding: 100px 0; opacity: 0.5;">
-          <i data-lucide="search-x" style="width: 48px; margin-bottom: 16px;"></i>
-          <p>Lancez une recherche pour voir des résultats.</p>
+          <i data-lucide="search-x" style="width: 48px; margin-bottom: 20px;"></i>
+          <p>Aucun résultat pour cette sélection.</p>
         </div>
       {% endif %}
     </div>
   </div>
 </div>
-
-<style>
-  .filter-pill { text-decoration: none; display: inline-block; padding: 8px 16px; border-radius: 12px; background: var(--bg-panel); color: var(--text-muted); font-size: 0.85rem; transition: 0.2s; border: 1px solid transparent; margin-bottom: 5px; }
-  .filter-pill.active { background-color: var(--primary) !important; color: white !important; font-weight: bold; }
-  .filter-pill:hover:not(.active) { background: rgba(255,255,255,0.1); color: white; }
-</style>
 {% endblock %}

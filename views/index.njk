@@ -23,14 +23,19 @@
   <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
     <h2 class="section-title">Artistes Populaires</h2>
   </div>
-  <div class="grid">
+  
+  <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 24px; width: 100%;">
     {% for artist in topArtists %}
-    <a href="/artiste/{{ artist.name | urlencode }}" class="card">
-      <div class="card-img-wrapper">
-        <img src="{{ artist.image }}" alt="{{ artist.name }}">
+    <a href="/artiste/{{ artist.name | urlencode }}" style="text-decoration: none; display: flex; flex-direction: column; gap: 12px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+      <img src="{{ artist.image }}" alt="{{ artist.name }}" style="width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+      
+      <div>
+        <h3 style="color: white; font-size: 16px; font-weight: 700; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ artist.name }}</h3>
+        
+        <p style="color: #a1a1aa; font-size: 13px; margin: 6px 0 0 0; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="music" style="width: 14px; height: 14px;"></i> <span class="format-num">{{ artist.listeners }}</span>
+        </p>
       </div>
-      <h3>{{ artist.name }}</h3>
-      <p>{{ artist.listeners }} auditeurs</p>
     </a>
     {% endfor %}
   </div>
@@ -54,7 +59,24 @@
 </div>
 
 <script>
-  // Script pour animer le bouton Match
+  // 1. FORMATAGE DES AUDITEURS (Transforme les millions en "M")
+  document.querySelectorAll('.format-num').forEach(el => {
+    // On extrait uniquement les chiffres de la donnée reçue
+    let text = el.innerText.replace(/[^0-9]/g, ''); 
+    let num = parseInt(text);
+    
+    if (!isNaN(num)) {
+      if (num >= 1000000) {
+        // Divise par 1 million et garde 1 chiffre après la virgule (ex: 84.2M)
+        el.innerText = (num / 1000000).toFixed(1) + "M";
+      } else {
+        // Formatage normal avec des espaces pour les plus petits (ex: 850 000)
+        el.innerText = num.toLocaleString('fr-FR');
+      }
+    }
+  });
+
+  // 2. SCRIPT DU BOUTON MATCH
   document.getElementById('btn-match').addEventListener('click', async () => {
     const res = await fetch('/api/match');
     const data = await res.json();
@@ -64,7 +86,7 @@
       const angles = [-10, 5, -5];
       container.innerHTML += `
         <a href="/album/${encodeURIComponent(item.artist)}/${encodeURIComponent(item.title)}" class="match-link">
-          <img src="${item.image}" class="tilted-img" style="transform: rotate(${angles[i]}deg); opacity: 0;" onload="this.style.opacity='1'">
+          <img src="${item.image}" class="tilted-img" style="transform: rotate(${angles[i]}deg); opacity: 0; transition: opacity 0.5s ease;" onload="this.style.opacity='1'">
         </a>`;
     });
   });
