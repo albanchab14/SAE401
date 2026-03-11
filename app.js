@@ -5,6 +5,7 @@ const axios = require('axios');
 const session = require('express-session');
 const db = require('./src/config/database');
 const bcrypt = require('bcrypt');
+const multer = require('multer'); // NOUVEAU : Pour gérer l'upload de l'avatar
 require('dotenv').config();
 
 const app = express();
@@ -20,6 +21,17 @@ app.use(session({
     resave: false,
     saveUninitialized: false
 }));
+
+// CONFIGURATION UPLOAD AVATAR (Stocke les images dans public/images/)
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'public/images/')
+    },
+    filename: function (req, file, cb) {
+        cb(null, 'avatar-' + Date.now() + path.extname(file.originalname))
+    }
+});
+const upload = multer({ storage: storage });
 
 // MIDDLEWARE : SÉCURITÉ MAINTENANCE
 app.use(async (req, res, next) => {
@@ -209,7 +221,14 @@ app.get('/details/:name', async (req, res) => {
         const userId = req.session.user ? req.session.user.id : 0;
         const comments = await getItemComments(trackName, 'track', userId);
 
-        res.render('details.njk', { track: trackData, comments, itemId: trackName, itemType: 'track' });
+        let isFavorite = false;
+        if (userId) {
+            const compositeId = `${trackData.name}||${trackData.artist}||${trackData.image}`;
+            const [fav] = await db.query("SELECT * FROM favorites WHERE user_id = ? AND music_id = ?", [userId, compositeId]);
+            isFavorite = fav.length > 0;
+        }
+
+        res.render('details.njk', { track: trackData, comments, itemId: trackName, itemType: 'track', isFavorite });
     } catch (e) { res.status(500).send("Erreur détails"); }
 });
 
@@ -241,6 +260,7 @@ app.get('/artiste/:name', async (req, res) => {
                     let titresUniques = new Set();
                     let albumsPurifies = [];
                     const motsInterdits = ['live', 'remix', 'tour', 'essential', 'hits', 'best of', 'collection', 'anthology', 'number ones', 'remaster', 'edition', 'deluxe', 'greatest', 'ultimate', 'trilogy'];
+                    
                     vraisAlbums.forEach(alb => {
                         let titreBasique = alb.title.toLowerCase();
                         let contientMotInterdit = motsInterdits.some(mot => titreBasique.includes(mot));
@@ -404,6 +424,169 @@ app.post('/notifications/delete/:id', async (req, res) => {
 });
 
 
+
+// ==========================================
+// 4.5 PAGE DE PROFIL (AVEC ENRICHISSEMENT API)
+// ==========================================
+app.get('/profil', async (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    const userId = req.session.user.id;
+    const API_KEY = process.env.LASTFM_API_KEY;
+
+    try {
+        const [users] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+        const userDb = users[0];
+
+        const dateIns = new Date(userDb.date_inscription);
+        const mois = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+        const joinDate = `${mois[dateIns.getMonth()]} ${dateIns.getFullYear()}`;
+
+        // RÉCUPÉRATION DES COMMENTAIRES ET DE LEURS IMAGES VIA L'API !
+        const [commentsDb] = await db.query(`
+            SELECT c.*, 
+                   (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as likes
+            FROM commentaires c 
+            WHERE c.user_id = ? 
+            ORDER BY c.date_commentaire DESC
+        `, [userId]);
+
+        for (let c of commentsDb) {
+            c.title = "Titre Inconnu";
+            c.artist = "Artiste inconnu";
+            c.image = "https://via.placeholder.com/150?text=BPM";
+            
+            try {
+                if (c.item_type === 'album') {
+                    let parts = c.music_item_id.split('::');
+                    c.artist = parts[0] || 'Inconnu';
+                    c.title = parts[1] || c.music_item_id;
+                    const resp = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=album.getInfo&api_key=${API_KEY}&artist=${encodeURIComponent(c.artist)}&album=${encodeURIComponent(c.title)}&format=json`);
+                    if (resp.data.album && resp.data.album.image) c.image = resp.data.album.image[3]['#text'] || c.image;
+                } else if (c.item_type === 'track') {
+                    c.title = c.music_item_id;
+                    const resp = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=track.search&track=${encodeURIComponent(c.title)}&api_key=${API_KEY}&format=json&limit=1`);
+                    if (resp.data.results && resp.data.results.trackmatches.track.length > 0) {
+                        const trk = resp.data.results.trackmatches.track[0];
+                        c.artist = trk.artist;
+                        if (trk.image && trk.image[3]) c.image = trk.image[3]['#text'] || c.image;
+                    }
+                } else if (c.item_type === 'artist') {
+                    c.title = c.music_item_id;
+                    c.artist = "Artiste";
+                    c.image = await getRealArtistImage(c.title);
+                }
+            } catch(err) {} // On ignore les erreurs API pour ne pas bloquer la page
+        }
+
+        const [favoritesDb] = await db.query('SELECT * FROM favorites WHERE user_id = ? ORDER BY date_ajout DESC', [userId]);
+        const formattedFavorites = favoritesDb.map(f => {
+            const parts = f.music_id.split('||');
+            return {
+                title: parts[0] || 'Titre inconnu',
+                artist: parts[1] || 'Artiste inconnu',
+                image: parts[2] || 'https://via.placeholder.com/300',
+                url: `/details/${encodeURIComponent(parts[0] || '')}`
+            };
+        });
+
+        const [[{ total_avis }]] = await db.query('SELECT COUNT(*) as total_avis FROM commentaires WHERE user_id = ?', [userId]);
+        const [[{ total_likes }]] = await db.query('SELECT COUNT(*) as total_likes FROM comment_likes cl JOIN commentaires c ON cl.comment_id = c.id WHERE c.user_id = ?', [userId]);
+        const [[{ total_suivis }]] = await db.query('SELECT COUNT(*) as total_suivis FROM follows WHERE follower_id = ?', [userId]);
+
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear();
+        
+        const [[{ month_avis }]] = await db.query(`SELECT COUNT(*) as month_avis FROM commentaires WHERE user_id = ? AND MONTH(date_commentaire) = ? AND YEAR(date_commentaire) = ?`, [userId, currentMonth, currentYear]);
+        const [[{ month_likes }]] = await db.query(`SELECT COUNT(*) as month_likes FROM comment_likes cl JOIN commentaires c ON cl.comment_id = c.id WHERE c.user_id = ? AND MONTH(cl.date_like) = ? AND YEAR(cl.date_like) = ?`, [userId, currentMonth, currentYear]);
+        const [[{ month_follows }]] = await db.query(`SELECT COUNT(*) as month_follows FROM follows WHERE follower_id = ? AND MONTH(date_follow) = ? AND YEAR(date_follow) = ?`, [userId, currentMonth, currentYear]);
+
+        const moisImpact = ['JANVIER', 'FÉVRIER', 'MARS', 'AVRIL', 'MAI', 'JUIN', 'JUILLET', 'AOÛT', 'SEPTEMBRE', 'OCTOBRE', 'NOVEMBRE', 'DÉCEMBRE'];
+
+        const userProfile = {
+            id: userDb.id,
+            name: userDb.pseudo,
+            email: userDb.email,
+            joinDate: joinDate,
+            bio: userDb.bio || "Aucune biographie renseignée.",
+            avatar: userDb.avatar || `https://ui-avatars.com/api/?name=${userDb.pseudo}&background=27272a&color=fff`,
+            stats: { 
+                favoris: formattedFavorites.length, 
+                avis: total_avis, 
+                suivis: total_suivis 
+            }
+        };
+
+        const userImpact = {
+            month: `${moisImpact[currentMonth - 1]} ${currentYear}`,
+            albumsRated: month_avis, 
+            musicCommented: month_avis,
+            likesReceived: month_likes,
+            membersFollowed: month_follows
+        };
+
+        res.render('profil.njk', { 
+            user: userProfile, 
+            comments: commentsDb, 
+            favorites: formattedFavorites,
+            impact: userImpact,
+            page: 'profil'
+        });
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).send("Erreur de chargement du profil");
+    }
+});
+
+// API : Modifier le profil (AVEC UPLOAD AVATAR ET GESTION MOT DE PASSE)
+app.post('/api/profil/edit', upload.single('avatar'), async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Non connecté" });
+    try {
+        const { pseudo, email, bio, password } = req.body;
+        const userId = req.session.user.id;
+        
+        // 1. Empêcher les espaces dans l'email côté serveur
+        const cleanEmail = email.replace(/\s+/g, '');
+
+        // 2. Si l'utilisateur a envoyé un fichier, on enregistre son chemin
+        if (req.file) {
+            const avatarPath = '/images/' + req.file.filename;
+            await db.query("UPDATE users SET avatar = ? WHERE id = ?", [avatarPath, userId]);
+            req.session.user.avatar = avatarPath;
+        }
+
+        // 3. Mise à jour Pseudo, Email, Bio
+        let updateQuery = "UPDATE users SET pseudo = ?, email = ?, bio = ? WHERE id = ?";
+        let queryParams = [pseudo, cleanEmail, bio, userId];
+
+        // 4. Si l'utilisateur a rempli le champ mot de passe, on le hash et on le met à jour !
+        if (password && password.trim() !== "") {
+            const hashedPassword = await bcrypt.hash(password, 10);
+            updateQuery = "UPDATE users SET pseudo = ?, email = ?, bio = ?, password = ? WHERE id = ?";
+            queryParams = [pseudo, cleanEmail, bio, hashedPassword, userId];
+        }
+
+        await db.query(updateQuery, queryParams);
+        req.session.user.pseudo = pseudo;
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: "Erreur : Cet email ou ce pseudo est peut-être déjà pris." });
+    }
+});
+
+app.delete('/api/profil/delete', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Non connecté" });
+    try {
+        await db.query("DELETE FROM users WHERE id = ?", [req.session.user.id]);
+        req.session.destroy();
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: "Erreur" });
+    }
+});
+
+// API DIVERSES
 app.get('/api/match', async (req, res) => {
     try {
         const API_KEY = process.env.LASTFM_API_KEY;
@@ -412,6 +595,7 @@ app.get('/api/match', async (req, res) => {
         const albums = response.data.topalbums.album.sort(() => 0.5 - Math.random());
         const result = [];
         const seenArtists = new Set();
+        
         for (let alb of albums) {
             let img = alb.image[3]['#text'];
             if (img && !img.includes('2a96cbd8') && !seenArtists.has(alb.artist.name)) {
@@ -429,14 +613,17 @@ app.get('/api/suggest', async (req, res) => {
         const { q } = req.query;
         const API_KEY = process.env.LASTFM_API_KEY;
         if (!q || q.length < 2) return res.json([]);
+
         const [artResp, albResp] = await Promise.all([
             axios.get(`https://api.deezer.com/search/artist?q=${encodeURIComponent(q)}&limit=4`),
             axios.get(`https://ws.audioscrobbler.com/2.0/?method=album.search&album=${encodeURIComponent(q)}&api_key=${API_KEY}&format=json&limit=4`)
         ]);
+
         let deezerArtists = artResp.data.data || [];
         deezerArtists = deezerArtists.filter(a => !((a.name.includes('&') || a.name.includes(' feat')) && !q.includes('&')));
         const artists = deezerArtists.slice(0, 4).map(a => ({ title: a.name, artist: "Artiste", type: "artiste" }));
         const albums = albResp.data.results.albummatches.album.map(a => ({ title: a.name, artist: a.artist, type: "album" }));
+        
         res.json([...artists, ...albums]);
     } catch (e) { res.json([]); }
 });
@@ -444,6 +631,22 @@ app.get('/api/suggest', async (req, res) => {
 // ==========================================
 // API : SYSTÈME DE COMMENTAIRES 
 // ==========================================
+
+app.post('/api/favorites/toggle', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
+    try {
+        const { music_id } = req.body;
+        const userId = req.session.user.id;
+        const [exist] = await db.query("SELECT * FROM favorites WHERE user_id = ? AND music_id = ?", [userId, music_id]);
+        if (exist.length > 0) {
+            await db.query("DELETE FROM favorites WHERE user_id = ? AND music_id = ?", [userId, music_id]);
+            res.json({ isFavorite: false });
+        } else {
+            await db.query("INSERT INTO favorites (user_id, music_id) VALUES (?, ?)", [userId, music_id]);
+            res.json({ isFavorite: true });
+        }
+    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+});
 
 app.post('/api/comments', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Connectez-vous pour commenter." });
@@ -508,9 +711,6 @@ app.get('/register', (req, res) => res.render('register.njk', { page: 'register'
 app.get('/connexion', (req, res) => res.redirect('/login'));
 app.get('/inscription', (req, res) => res.redirect('/register'));
 
-// ==========================================
-// 2. Recevoir les données de connexion (LOGIN SECURISÉ)
-// ==========================================
 app.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
@@ -526,17 +726,22 @@ app.post('/login', async (req, res) => {
 
         const user = users[0];
 
-        // ✨ LA MAGIE BCRYPT : On compare le mot de passe tapé avec le hash de la BDD
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (isMatch) {
+            const [settings] = await db.query('SELECT is_maintenance FROM site_settings WHERE id = 1');
+            const isMaintenance = settings.length > 0 ? settings[0].is_maintenance : false;
+
+            if (isMaintenance && user.role !== 'admin') return res.render('login.njk', { page: 'login', error: "🛠 Le site est en maintenance." });
+            if (user.is_banned == 1) return res.render('login.njk', { page: 'login', error: "🚨 Votre compte a été banni." });
+
             req.session.user = {
                 id: user.id,
                 pseudo: user.pseudo,
                 role: user.role,
                 avatar: user.avatar
             };
-            res.redirect('/');
+            res.redirect(user.role === 'admin' ? '/admin' : '/');
         } else {
             return res.render('login.njk', { 
                 page: 'login', 
@@ -549,19 +754,15 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// 4. Recevoir les données d'inscription (Quand on clique sur "Créer mon compte")
 app.post('/register', async (req, res) => {
-    // Attention : dans le HTML le champ s'appelle "username"
     const { username, email, password } = req.body;
 
     try {
-        // 1. On vérifie si l'email ou le pseudo existe déjà dans la base
         const [existingUsers] = await db.query(
             'SELECT * FROM users WHERE email = ? OR pseudo = ?', 
             [email, username]
         );
         
-        // Si on trouve quelqu'un, on bloque l'inscription
         if (existingUsers.length > 0) {
             return res.render('register.njk', { 
                 page: 'register', 
@@ -569,28 +770,27 @@ app.post('/register', async (req, res) => {
             });
         }
 
-        // 2. Si tout est bon, on l'insère dans la base de données
+        const hashedPassword = await bcrypt.hash(password, 10);
+
         const [result] = await db.query(
             'INSERT INTO users (pseudo, email, password, role) VALUES (?, ?, ?, ?)',
-            [username, email, password, 'utilisateur']
+            [username, email, hashedPassword, 'utilisateur'] 
         );
 
-        // 3. On le connecte automatiquement (création de la session VIP)
         req.session.user = {
-            id: result.insertId, // On récupère l'ID tout neuf généré par MySQL
+            id: result.insertId, 
             pseudo: username,
             role: 'utilisateur',
             avatar: null
         };
 
-        // 4. On l'envoie sur la page d'accueil !
         res.redirect('/');
 
     } catch (error) {
         console.error(error);
         res.render('register.njk', { 
             page: 'register', 
-            error: "Une erreur est survenue lors de l'inscription. Veuillez réessayer." 
+            error: "Une erreur est survenue lors de l'inscription." 
         });
     }
 });
@@ -623,7 +823,6 @@ app.get('/admin', requireAdmin, async (req, res) => {
             ORDER BY count DESC
         `);
 
-        // GÉNÉRATION DES URLS CLIQUABLES (GÈRE LES NOUVEAUX ET LES ANCIENS COMMENTAIRES !)
         reports.forEach(r => {
             const itemId = r.music_item_id ? r.music_item_id.trim() : '';
             if (r.item_type === 'track') {
@@ -631,10 +830,10 @@ app.get('/admin', requireAdmin, async (req, res) => {
             } else if (r.item_type === 'artist') {
                 r.url = '/artiste/' + encodeURIComponent(itemId);
             } else if (r.item_type === 'album') {
-                if (itemId.includes('::')) { // Nouveau format
+                if (itemId.includes('::')) { 
                     let parts = itemId.split('::'); 
                     r.url = '/album/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]);
-                } else if (itemId.includes('-')) { // Ancien format
+                } else if (itemId.includes('-')) { 
                     let parts = itemId.split('-');
                     r.url = '/album/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts.slice(1).join('-'));
                 } else {
@@ -676,9 +875,6 @@ app.get('/admin', requireAdmin, async (req, res) => {
     } catch (error) { res.status(500).send("Erreur serveur lors du chargement du Dashboard."); }
 });
 
-// ==========================================
-// API ADMIN : ACTIONS
-// ==========================================
 app.use('/api/admin', requireAdmin);
 
 app.post('/api/admin/maintenance', async (req, res) => {

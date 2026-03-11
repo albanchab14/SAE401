@@ -1,0 +1,302 @@
+{% extends "layout.njk" %}
+
+{% block content %}
+<div class="profile-page">
+
+    <div class="profile-header-card">
+        
+        <div id="profile-view" style="display: flex; gap: 40px; flex: 1; align-items: center;">
+            <div class="profile-avatar-wrapper">
+                <img src="{{ user.avatar }}" alt="Avatar de {{ user.name }}" class="profile-avatar">
+            </div>
+
+            <div class="profile-info">
+                <h1>{{ user.name }}</h1>
+                <span class="profile-date">Membre depuis {{ user.joinDate }}</span>
+                <p class="profile-bio">{{ user.bio }}</p>
+                
+                <div class="profile-actions">
+                    <button class="btn-outline" onclick="toggleEditProfile()">
+                        <i data-lucide="settings" style="width: 16px; height: 16px;"></i> Modifier le profil
+                    </button>
+                    <button class="btn-outline btn-danger" onclick="deleteAccount()">
+                        <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i> Supprimer le compte
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="profile-edit" class="hidden" style="display: flex; gap: 40px; flex: 1; align-items: flex-start;">
+            
+            <input type="file" id="avatar-upload" style="display: none;" accept="image/*">
+            <div class="profile-avatar-wrapper edit-avatar" style="cursor: pointer;" onclick="document.getElementById('avatar-upload').click()">
+                <img src="{{ user.avatar }}" alt="Avatar" class="profile-avatar dim-avatar">
+                <div class="camera-icon">
+                    <i data-lucide="camera" style="width: 24px; height: 24px; color: white;"></i>
+                </div>
+                <button class="btn-avatar-edit">
+                    <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+                </button>
+            </div>
+
+            <div class="edit-form-fields" style="flex: 1;">
+                <input type="text" id="edit-pseudo" value="{{ user.name }}" class="edit-input" placeholder="Pseudo" style="width: 100%; margin-bottom: 10px; padding: 10px; background: #09090b; border: 1px solid #3f3f46; color: white; border-radius: 8px;">
+                <input type="email" id="edit-email" value="{{ user.email }}" class="edit-input" placeholder="Email" oninput="this.value = this.value.replace(/\s/g, '')" style="width: 100%; margin-bottom: 10px; padding: 10px; background: #09090b; border: 1px solid #3f3f46; color: white; border-radius: 8px;">
+                <input type="password" id="edit-password" class="edit-input" placeholder="Nouveau mot de passe (laisser vide pour ne pas changer)" style="width: 100%; margin-bottom: 10px; padding: 10px; background: #09090b; border: 1px solid #3f3f46; color: white; border-radius: 8px;">
+                <textarea id="edit-bio" class="edit-textarea" placeholder="Votre biographie" style="width: 100%; margin-bottom: 15px; padding: 10px; background: #09090b; border: 1px solid #3f3f46; color: white; border-radius: 8px; min-height: 80px;">{{ user.bio }}</textarea>
+                
+                <div class="edit-actions" style="display: flex; gap: 10px;">
+                    <button class="btn-save" onclick="saveProfile()" style="background: #2b7fff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Sauvegarder</button>
+                    <button class="btn-cancel" onclick="toggleEditProfile()" style="background: transparent; color: #a1a1aa; border: 1px solid #3f3f46; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Annuler</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-stats">
+            <div class="stat-item">
+                <span class="stat-number">{{ user.stats.favoris }}</span>
+                <span class="stat-label">FAVORIS</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ user.stats.avis }}</span>
+                <span class="stat-label">AVIS</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ user.stats.suivis }}</span>
+                <span class="stat-label">SUIVIS</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-tabs">
+        <button class="tab-btn active" onclick="switchTab('comments', this)">
+            <i data-lucide="message-square" style="width: 18px; height: 18px;"></i> Mes Avis
+        </button>
+        <button class="tab-btn" onclick="switchTab('favorites', this)">
+            <i data-lucide="heart" style="width: 18px; height: 18px;"></i> Mes Favoris
+        </button>
+        <button class="tab-btn" onclick="switchTab('stats', this)">
+            <i data-lucide="bar-chart-2" style="width: 18px; height: 18px;"></i> Mon Impact
+        </button>
+    </div>
+
+    <div id="tab-comments" class="tab-content">
+        <div class="comments-list">
+            {% for comment in comments %}
+            <div class="comment-card" style="background: #09090b; border: 1px solid #27272a; padding: 24px; border-radius: 16px; margin-bottom: 20px; display: flex; gap: 20px;">
+                <img src="{{ comment.image }}" alt="{{ comment.title }}" style="width: 100px; height: 100px; border-radius: 12px; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+                
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 4px 0; color: white; font-size: 18px; font-weight: 800;">{{ comment.title }}</h3>
+                    <span style="color: #a1a1aa; font-size: 13px; display: block; margin-bottom: 12px;">{{ comment.artist }}</span>
+                    
+                    <div style="display: flex; gap: 4px; margin-bottom: 16px;">
+                        {% for i in range(0, 5) %}
+                            <i data-lucide="star" style="width: 16px; height: 16px; fill: {% if i < comment.note %}#f0b100{% else %}none{% endif %}; color: {% if i < comment.note %}#f0b100{% else %}#3f3f46{% endif %};"></i>
+                        {% endfor %}
+                    </div>
+
+                    <p id="comment-content-{{ comment.id }}" style="color: #d4d4d8; line-height: 1.6; margin-bottom: 20px; font-size: 14px;">{{ comment.commentaire }}</p>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; gap: 12px;">
+                            <button onclick="openEditModal({{ comment.id }}, {{ comment.note }})" style="background: #18181b; border: 1px solid #27272a; color: #d4d4d8; padding: 8px 16px; border-radius: 10px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;" onmouseover="this.style.background='#27272a'" onmouseout="this.style.background='#18181b'">
+                                <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i> Modifier
+                            </button>
+                            <button onclick="deleteOwnComment({{ comment.id }})" style="background: #18181b; border: 1px solid #27272a; color: #d4d4d8; padding: 8px 16px; border-radius: 10px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;" onmouseover="this.style.background='#ff2056'; this.style.borderColor='#ff2056'" onmouseout="this.style.background='#18181b'; this.style.borderColor='#27272a'">
+                                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Supprimer
+                            </button>
+                        </div>
+                        <div style="color: #a1a1aa; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: bold;">
+                            <i data-lucide="thumbs-up" style="width: 16px; height: 16px;"></i> {{ comment.likes }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p style="color: #71717b;">Vous n'avez publié aucun avis pour le moment.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="tab-favorites" class="tab-content hidden">
+        <div class="favorites-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px;">
+            {% for fav in favorites %}
+            <a href="{{ fav.url }}" class="fav-card" style="background: rgba(24,24,27,0.4); border: 1px solid #27272a; border-radius: 16px; padding: 12px; text-decoration: none; color: inherit; transition: transform 0.2s; display: block;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                <img src="{{ fav.image }}" alt="{{ fav.title }}" style="width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 12px; margin-bottom: 12px;">
+                <h4 style="margin: 0 0 4px 0; font-size: 15px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ fav.title }}</h4>
+                <p style="margin: 0; font-size: 13px; color: #a1a1aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ fav.artist }}</p>
+            </a>
+            {% else %}
+            <p style="color: #71717b; grid-column: 1 / -1;">Vous n'avez aucun favori pour le moment.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="tab-stats" class="tab-content hidden">
+        <div class="impact-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; margin-top: 20px;">
+            <div>
+                <h2 style="display: flex; align-items: center; gap: 10px; font-size: 1.5rem; margin-bottom: 5px; color: white;">
+                    <i data-lucide="trending-up" style="color: #d946ef;"></i> Ton Impact BPM
+                </h2>
+                <p style="color: #a1a1aa; font-size: 0.95rem; margin: 0;">Regardons ce que tu as accompli ces 30 derniers jours.</p>
+            </div>
+            <div class="impact-badge" style="background: rgba(217, 70, 239, 0.1); color: #d946ef; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 12px; letter-spacing: 1px;">{{ impact.month }}</div>
+        </div>
+
+        <div class="impact-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+            <div class="impact-card" style="background: rgba(24,24,27,0.4); border: 1px solid #27272a; padding: 20px; border-radius: 16px; display: flex; align-items: flex-start; gap: 15px;">
+                <div class="impact-icon" style="background-color: rgba(217, 70, 239, 0.1); color: #d946ef; width: 40px; height: 40px; border-radius: 10px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
+                    <i data-lucide="star"></i>
+                </div>
+                <p style="color: #d4d4d8; margin: 0; line-height: 1.5;">Tu as donné <span style="color: #d946ef; font-weight: bold;">{{ impact.albumsRated }} avis</span> ce mois-ci. Ta collection s'agrandit !</p>
+            </div>
+            <div class="impact-card" style="background: rgba(24,24,27,0.4); border: 1px solid #27272a; padding: 20px; border-radius: 16px; display: flex; align-items: flex-start; gap: 15px;">
+                <div class="impact-icon" style="background-color: rgba(99, 102, 241, 0.1); color: #818cf8; width: 40px; height: 40px; border-radius: 10px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
+                    <i data-lucide="message-circle"></i>
+                </div>
+                <p style="color: #d4d4d8; margin: 0; line-height: 1.5;">Tu as commenté <span style="color: #818cf8; font-weight: bold;">{{ impact.musicCommented }} éléments</span>. Tes avis comptent !</p>
+            </div>
+            <div class="impact-card" style="background: rgba(24,24,27,0.4); border: 1px solid #27272a; padding: 20px; border-radius: 16px; display: flex; align-items: flex-start; gap: 15px;">
+                <div class="impact-icon" style="background-color: rgba(244, 63, 94, 0.1); color: #fb7185; width: 40px; height: 40px; border-radius: 10px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
+                    <i data-lucide="heart"></i>
+                </div>
+                <p style="color: #d4d4d8; margin: 0; line-height: 1.5;">Tes avis ont reçu <span style="color: #fb7185; font-weight: bold;">{{ impact.likesReceived }} likes</span> au total. Tu es un vrai curateur !</p>
+            </div>
+            <div class="impact-card" style="background: rgba(24,24,27,0.4); border: 1px solid #27272a; padding: 20px; border-radius: 16px; display: flex; align-items: flex-start; gap: 15px;">
+                <div class="impact-icon" style="background-color: rgba(14, 165, 233, 0.1); color: #38bdf8; width: 40px; height: 40px; border-radius: 10px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
+                    <i data-lucide="user-plus"></i>
+                </div>
+                <p style="color: #d4d4d8; margin: 0; line-height: 1.5;">Tu as suivi <span style="color: #38bdf8; font-weight: bold;">{{ impact.membersFollowed }} membres</span> ce mois-ci.</p>
+            </div>
+        </div>
+
+        <div class="did-you-know-banner" style="background: #1b0a2a; border: 1px solid rgba(217, 70, 239, 0.2); border-radius: 20px; padding: 30px; position: relative; overflow: hidden; margin-top: 40px; display: flex; flex-direction: column; justify-content: center; min-height: 120px;">
+            <h3 style="color: white; font-size: 18px; margin-top: 0; margin-bottom: 12px; font-weight: 800;">Le savais-tu ?</h3>
+            <p style="color: #d4d4d8; font-size: 15px; line-height: 1.6; margin: 0; max-width: 85%; position: relative; z-index: 2;">
+                Les membres qui commentent plus de 10 albums par mois ont 3x plus de chances d'apparaître dans les recommandations de la communauté. Continue comme ça !
+            </p>
+            <i data-lucide="music" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); width: 140px; height: 140px; color: rgba(255, 255, 255, 0.03); z-index: 1;"></i>
+        </div>
+
+    </div>
+
+</div>
+
+<div id="edit-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 9999;">
+    <div style="background: #18181b; border: 1px solid #3f3f46; border-radius: 16px; width: 450px; padding: 24px;">
+        <h3 style="color: white; margin-top: 0;">Modifier mon avis</h3>
+        
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;" id="edit-star-rating">
+            <div class="star-edit" data-val="1"><i data-lucide="star"></i></div>
+            <div class="star-edit" data-val="2"><i data-lucide="star"></i></div>
+            <div class="star-edit" data-val="3"><i data-lucide="star"></i></div>
+            <div class="star-edit" data-val="4"><i data-lucide="star"></i></div>
+            <div class="star-edit" data-val="5"><i data-lucide="star"></i></div>
+        </div>
+
+        <textarea id="edit-comment-text" style="width: 100%; background: #09090b; border: 1px solid #3f3f46; border-radius: 12px; padding: 16px; color: white; min-height: 100px; resize: none; margin-bottom: 24px; outline: none;"></textarea>
+
+        <div style="display: flex; gap: 12px;">
+            <button onclick="closeEditModal()" style="flex: 1; background: #09090b; border: 1px solid #3f3f46; color: white; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer;">Annuler</button>
+            <button onclick="submitEditComment()" style="flex: 1; background: #2b7fff; border: none; color: white; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer;">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .star-edit { color: #71717b; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; }
+    .star-edit svg { width: 24px; height: 24px; transition: 0.2s; pointer-events: none; }
+</style>
+
+<script>
+if (typeof lucide !== 'undefined') lucide.createIcons();
+
+function switchTab(tabId, btnElement) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.getElementById('tab-' + tabId).classList.remove('hidden');
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    btnElement.classList.add('active');
+}
+
+function toggleEditProfile() {
+    document.getElementById('profile-view').classList.toggle('hidden');
+    document.getElementById('profile-edit').classList.toggle('hidden');
+}
+
+// ENVOI DU PROFIL AVEC GESTION DE L'IMAGE (FormData)
+async function saveProfile() {
+    const pseudo = document.getElementById('edit-pseudo').value;
+    const email = document.getElementById('edit-email').value;
+    const password = document.getElementById('edit-password').value;
+    const bio = document.getElementById('edit-bio').value;
+    const avatarFile = document.getElementById('avatar-upload').files[0];
+
+    const formData = new FormData();
+    formData.append('pseudo', pseudo);
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('bio', bio);
+    if(avatarFile) formData.append('avatar', avatarFile);
+
+    const res = await fetch('/api/profil/edit', {
+        method: 'POST',
+        body: formData // On n'utilise pas JSON.stringify car on envoie un fichier !
+    });
+
+    if (res.ok) window.location.reload();
+    else {
+        const data = await res.json();
+        alert(data.error);
+    }
+}
+
+async function deleteAccount() {
+    if (confirm("Attention, cette action est irréversible. Vos données et commentaires seront supprimés. Confirmer ?")) {
+        const res = await fetch('/api/profil/delete', { method: 'DELETE' });
+        if (res.ok) window.location.href = '/';
+    }
+}
+
+// GESTION DES COMMENTAIRES DEPUIS LE PROFIL
+async function deleteOwnComment(id) {
+    if(!confirm("Supprimer définitivement cet avis ?")) return;
+    const res = await fetch(`/api/comments/own/${id}`, { method: 'DELETE' });
+    if(res.ok) window.location.reload();
+}
+
+let editCommentId = null;
+let editSelectedNote = 0;
+function openEditModal(id, currentNote) {
+    editCommentId = id;
+    editSelectedNote = currentNote;
+    document.getElementById('edit-comment-text').value = document.getElementById(`comment-content-${id}`).innerText;
+    colorizeEditStars(currentNote);
+    document.getElementById('edit-modal').style.display = 'flex';
+}
+function closeEditModal() { document.getElementById('edit-modal').style.display = 'none'; }
+
+const editStarContainer = document.getElementById('edit-star-rating');
+if (editStarContainer) {
+    const editStars = editStarContainer.querySelectorAll('.star-edit');
+    function colorizeEditStars(count) {
+        editStars.forEach((s) => {
+            const val = parseInt(s.getAttribute('data-val'));
+            const svg = s.querySelector('svg');
+            if (val <= count) { svg.style.fill = '#2b7fff'; svg.style.color = '#2b7fff'; } 
+            else { svg.style.fill = 'none'; svg.style.color = '#71717b'; }
+        });
+    }
+    editStarContainer.addEventListener('mouseover', (e) => { const h = e.target.closest('.star-edit'); if (h) colorizeEditStars(parseInt(h.getAttribute('data-val'))); });
+    editStarContainer.addEventListener('mouseout', () => colorizeEditStars(editSelectedNote));
+    editStarContainer.addEventListener('click', (e) => { const c = e.target.closest('.star-edit'); if (c) { editSelectedNote = parseInt(c.getAttribute('data-val')); colorizeEditStars(editSelectedNote); } });
+}
+
+async function submitEditComment() {
+    const text = document.getElementById('edit-comment-text').value;
+    if(editSelectedNote === 0 || text.trim() === "") return alert("Veuillez donner une note.");
+    const res = await fetch(`/api/comments/own/${editCommentId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ note: editSelectedNote, commentaire: text }) });
+    if(res.ok) window.location.reload();
+}
+</script>
+{% endblock %}

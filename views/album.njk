@@ -4,22 +4,32 @@
 <div class="page-content">
   <div class="detail-5">
     
-    <div class="section-6" style="display: flex; gap: 40px; align-items: flex-end; margin-bottom: 48px;">
-      <div class="container-7" style="width: 300px; height: 300px; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-        <img src="{{ album.image }}" style="width: 100%; height: 100%; object-fit: cover;">
-      </div>
+    <div class="section-6" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 48px;">
       
-      <div class="container-9">
-        <p style="color: var(--primary); text-transform: uppercase; letter-spacing: 1.2px; font-size: 12px; margin-bottom: 8px;">Album • {{ album.year }}</p>
-        <h1 style="font-size: 72px; font-weight: 800; line-height: 1; margin-bottom: 12px;">{{ album.title }}</h1>
-        <div style="display: flex; align-items: center; gap: 10px; color: var(--text-muted);">
-          <a href="/artiste/{{ album.artist | urlencode }}" style="color: white; font-weight: bold; font-size: 20px; text-decoration: none;">{{ album.artist }}</a>
-          <span>•</span>
-          <span>{{ album.trackCount }} titres</span>
-          <span>•</span>
-          <span>{{ album.totalDuration }}</span>
+      <div style="display: flex; gap: 40px; align-items: flex-end;">
+        <div class="container-7" style="width: 300px; height: 300px; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+          <img src="{{ album.image }}" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+        
+        <div class="container-9">
+          <p style="color: var(--primary); text-transform: uppercase; letter-spacing: 1.2px; font-size: 12px; margin-bottom: 8px;">Album • {{ album.year }}</p>
+          <h1 style="font-size: 72px; font-weight: 800; line-height: 1; margin-bottom: 12px;">{{ album.title }}</h1>
+          <div style="display: flex; align-items: center; gap: 10px; color: var(--text-muted);">
+            <a href="/artiste/{{ album.artist | urlencode }}" style="color: white; font-weight: bold; font-size: 20px; text-decoration: none;">{{ album.artist }}</a>
+            <span>•</span>
+            <span>{{ album.trackCount }} titres</span>
+            <span>•</span>
+            <span>{{ album.totalDuration }}</span>
+          </div>
         </div>
       </div>
+
+      <div>
+        <button class="btn btn-secondary" onclick="copyLink()" style="background: #18181b; border: 1px solid #27272a; padding: 12px 24px; border-radius: 12px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="share-2" style="width: 18px; height: 18px;"></i> Partager l'album
+        </button>
+      </div>
+
     </div>
 
     <div style="display: flex; gap: 48px;">
@@ -77,6 +87,15 @@
     </div>
   </div>
 </div>
+
+<script>
+    // Pour copier le lien de la page
+    function copyLink() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            alert('Lien de l\'album copié dans le presse-papier !');
+        });
+    }
+</script>
 
 {% include "comments.njk" %}
 

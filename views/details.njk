@@ -10,7 +10,7 @@
       </div>
       
       <div class="container-9">
-        <p class="text-11" style="color: var(--primary); text-transform: uppercase; letter-spacing: 1.2px; font-size: 12px; margin-bottom: 8px;">Musique • {{ track.type }}</p>
+        <p class="text-11" style="color: var(--primary); text-transform: uppercase; letter-spacing: 1.2px; font-size: 12px; margin-bottom: 8px;">Musique • {{ track.year }}</p>
         <h1 class="text-13" style="font-size: 72px; font-weight: 800; line-height: 1; margin-bottom: 12px;">{{ track.name }}</h1>
         <div class="container-14" style="display: flex; align-items: center; gap: 10px; color: var(--text-muted);">
           <a href="/artiste/{{ track.artist | urlencode }}" style="color: white; font-weight: bold; font-size: 20px; text-decoration: none;" onmouseover="this.style.color='#d946ef'" onmouseout="this.style.color='white'">
@@ -23,8 +23,13 @@
         </div>
         
         <div class="container-21" style="display: flex; gap: 12px; margin-top: 24px;">
-          <button class="btn-details-white"><i data-lucide="heart"></i> Favori</button>
-          <button class="btn-details-dark"><i data-lucide="share-2"></i> Partager</button>
+          <button class="btn-details-white" onclick="toggleFavorite(this, '{{ track.name | replace("'", "\\'") }}', '{{ track.artist | replace("'", "\\'") }}', '{{ track.image }}')">
+            <i data-lucide="heart" style="{% if isFavorite %}fill: #ff2056; color: #ff2056;{% else %}fill: none; color: black;{% endif %}"></i> Favori
+          </button>
+          
+          <button class="btn-details-dark" onclick="copyLink()">
+              <i data-lucide="share-2"></i> Partager
+          </button>
         </div>
       </div>
     </div>
@@ -120,6 +125,38 @@
   .btn-details-dark { background: #18181b; color: white; border: 1px solid #27272a; padding: 12px 28px; border-radius: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
   .btn-details-dark:hover { background: #27272a; }
 </style>
+
+<script>
+    // Pour copier le lien de la page
+    function copyLink() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            alert('Lien de la musique copié dans le presse-papier !');
+        });
+    }
+
+    // Pour ajouter en Favoris 
+    async function toggleFavorite(btn, title, artist, image) {
+        const musicId = `${title}||${artist}||${image}`;
+        const res = await fetch('/api/favorites/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ music_id: musicId })
+        });
+        if(res.ok) {
+            const data = await res.json();
+            const icon = btn.querySelector('svg');
+            if(data.isFavorite) {
+                icon.style.fill = '#ff2056';
+                icon.style.color = '#ff2056';
+            } else {
+                icon.style.fill = 'none';
+                icon.style.color = 'black'; // Car le bouton est blanc
+            }
+        } else {
+            alert("Veuillez vous connecter pour ajouter aux favoris.");
+        }
+    }
+</script>
 
 {% include "comments.njk" %}
 

@@ -19,43 +19,44 @@
 
     <div class="comments-list" style="display: flex; flex-direction: column; gap: 24px;">
         {% for c in comments %}
-        <div class="comment-item" style="background: #18181b; border: 1px solid #27272a; padding: 20px; border-radius: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <img src="{{ c.avatar if c.avatar else 'https://ui-avatars.com/api/?name=' + c.pseudo + '&background=27272a&color=fff' }}" style="width: 40px; height: 40px; border-radius: 50%;">
+        <div class="comment-item" style="background: #18181b; border: 1px solid #27272a; padding: 24px; border-radius: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <img src="{{ c.avatar if c.avatar else 'https://ui-avatars.com/api/?name=' + c.pseudo + '&background=27272a&color=fff' }}" style="width: 48px; height: 48px; border-radius: 50%;">
                     <div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <strong style="color: white;">{{ c.pseudo }}</strong>
-                            <span style="color: #71717b; font-size: 12px;">{{ c.time_ago }}</span>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <strong style="color: white; font-size: 18px;">{{ c.pseudo }}</strong>
+                            <span style="color: #71717b; font-size: 14px;">{{ c.time_ago }}</span>
                         </div>
-                        <div style="display: flex; color: #d946ef; width: 14px; margin-top: 4px;">
+                        
+                        <div style="display: flex; gap: 4px; margin-top: 6px;">
                             {% for i in range(0, 5) %}
                                 {% if i < c.note %}
-                                    <i data-lucide="star" style="fill: #d946ef; color: #d946ef; width: 14px; height: 14px;"></i>
+                                    <i data-lucide="star" style="fill: #d946ef; color: #d946ef; width: 16px; height: 16px;"></i>
                                 {% else %}
-                                    <i data-lucide="star" style="color: #3f3f46; width: 14px; height: 14px;"></i>
+                                    <i data-lucide="star" style="color: #3f3f46; width: 16px; height: 16px;"></i>
                                 {% endif %}
                             {% endfor %}
                         </div>
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 12px; color: #71717b; align-items: center;">
+                <div style="display: flex; gap: 16px; color: #71717b; align-items: center;">
                     {% if user and user.id == c.user_id %}
-                        <button onclick="openEditModal({{ c.id }}, {{ c.note }})" style="background: none; border: none; color: inherit; cursor: pointer;" title="Modifier mon avis"><i data-lucide="edit-2" style="width: 16px; height: 16px;"></i></button>
-                        <button onclick="deleteOwnComment({{ c.id }})" style="background: none; border: none; color: #ff2056; cursor: pointer;" title="Supprimer mon avis"><i data-lucide="trash-2" style="width: 16px; height: 16px;"></i></button>
+                        <button onclick="openEditModal({{ c.id }}, {{ c.note }})" style="background: none; border: none; color: inherit; cursor: pointer;" title="Modifier mon avis"><i data-lucide="edit-2" style="width: 18px; height: 18px;"></i></button>
+                        <button onclick="deleteOwnComment({{ c.id }})" style="background: none; border: none; color: #ff2056; cursor: pointer;" title="Supprimer mon avis"><i data-lucide="trash-2" style="width: 18px; height: 18px;"></i></button>
                     {% endif %}
 
-                    <button onclick="likeComment({{ c.id }}, this)" style="background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-left: 10px;">
+                    <button onclick="likeComment({{ c.id }}, this)" style="background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-left: 8px;">
                         <i data-lucide="heart" class="{% if c.user_liked %}liked{% endif %}" style="width: 18px; height: 18px; {% if c.user_liked %}fill: #ff2056; color: #ff2056;{% endif %}"></i> 
-                        <span class="like-count">{{ c.total_likes }}</span>
+                        <span class="like-count" style="font-size: 14px;">{{ c.total_likes }}</span>
                     </button>
                     <button onclick="openReportModal({{ c.id }}, '{{ c.pseudo }}')" style="background: none; border: none; color: inherit; cursor: pointer;" title="Signaler ce commentaire">
                         <i data-lucide="flag" style="width: 18px; height: 18px;"></i>
                     </button>
                 </div>
             </div>
-            <p id="comment-content-{{ c.id }}" style="color: #d4d4d8; line-height: 1.6; margin: 0;">{{ c.commentaire }}</p>
+            <p id="comment-content-{{ c.id }}" style="color: #d4d4d8; line-height: 1.6; margin: 0; font-size: 15px;">{{ c.commentaire }}</p>
         </div>
         {% else %}
         <p style="color: #71717b;">Aucun avis pour le moment. Soyez le premier !</p>
@@ -110,7 +111,7 @@
         </div>
         <div style="display: flex; gap: 12px;">
             <button onclick="closeReportModal()" style="flex: 1; background: #09090b; border: 1px solid #3f3f46; color: white; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer;">Annuler</button>
-            <button onclick="submitReport()" style="flex: 1; background: #9f1239; border: none; color: white; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s;">Envoyer</button>
+            <button onclick="submitReport()" style="flex: 1; background: #9f1239; border: none; color: white; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s;">Envoyer le signalement</button>
         </div>
     </div>
 </div>
@@ -129,7 +130,7 @@
     const currentItemType = "{{ itemType }}";
     let selectedNote = 0;
     
-    // GESTION MAGIQUE DES ÉTOILES (Formulaire Principal)
+    // GESTION DES ÉTOILES (Formulaire Principal)
     const starContainer = document.getElementById('star-rating');
     if (starContainer) {
         const stars = starContainer.querySelectorAll('.star-input');
@@ -173,20 +174,23 @@
     }
     function closeEditModal() { document.getElementById('edit-modal').style.display = 'none'; }
     
-    // Étoiles dans le Modal d'édition
     const editStarContainer = document.getElementById('edit-star-rating');
-    const editStars = editStarContainer.querySelectorAll('.star-edit');
-    function colorizeEditStars(count) {
-        editStars.forEach((s) => {
-            const val = parseInt(s.getAttribute('data-val'));
-            const svg = s.querySelector('svg');
-            if (val <= count) { svg.style.fill = '#2b7fff'; svg.style.color = '#2b7fff'; } 
-            else { svg.style.fill = 'none'; svg.style.color = '#71717b'; }
-        });
+    if (editStarContainer) {
+        const editStars = editStarContainer.querySelectorAll('.star-edit');
+        function colorizeEditStars(count) {
+            editStars.forEach((s) => {
+                const val = parseInt(s.getAttribute('data-val'));
+                const svg = s.querySelector('svg');
+                if (svg) {
+                    if (val <= count) { svg.style.fill = '#2b7fff'; svg.style.color = '#2b7fff'; } 
+                    else { svg.style.fill = 'none'; svg.style.color = '#71717b'; }
+                }
+            });
+        }
+        editStarContainer.addEventListener('mouseover', (e) => { const h = e.target.closest('.star-edit'); if (h) colorizeEditStars(parseInt(h.getAttribute('data-val'))); });
+        editStarContainer.addEventListener('mouseout', () => colorizeEditStars(editSelectedNote));
+        editStarContainer.addEventListener('click', (e) => { const c = e.target.closest('.star-edit'); if (c) { editSelectedNote = parseInt(c.getAttribute('data-val')); colorizeEditStars(editSelectedNote); } });
     }
-    editStarContainer.addEventListener('mouseover', (e) => { const h = e.target.closest('.star-edit'); if (h) colorizeEditStars(parseInt(h.getAttribute('data-val'))); });
-    editStarContainer.addEventListener('mouseout', () => colorizeEditStars(editSelectedNote));
-    editStarContainer.addEventListener('click', (e) => { const c = e.target.closest('.star-edit'); if (c) { editSelectedNote = parseInt(c.getAttribute('data-val')); colorizeEditStars(editSelectedNote); } });
 
     async function submitEditComment() {
         const text = document.getElementById('edit-comment-text').value;
