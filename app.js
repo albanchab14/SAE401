@@ -3,7 +3,7 @@ const nunjucks = require('nunjucks');
 const path = require('path');
 const axios = require('axios');
 const session = require('express-session');
-const db = require('./src/config/database');
+const db = require('./src/config/database'); 
 require('dotenv').config();
 
 const app = express();
@@ -12,7 +12,7 @@ const port = 3000;
 nunjucks.configure('views', { autoescape: true, express: app });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.json()); 
 
 app.use(session({
     secret: 'bpm_super_secret_key',
@@ -20,9 +20,11 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// MIDDLEWARE MAINTENANCE
+// MIDDLEWARE : SÉCURITÉ MAINTENANCE
 app.use(async (req, res, next) => {
-    if (req.path.startsWith('/css') || req.path.startsWith('/images') || req.path.startsWith('/api')) return next();
+    if (req.path.startsWith('/css') || req.path.startsWith('/images') || req.path.startsWith('/api')) {
+        return next();
+    }
     try {
         const [settings] = await db.query('SELECT is_maintenance, maintenance_message FROM site_settings WHERE id = 1');
         const isMaintenance = settings.length > 0 ? settings[0].is_maintenance : false;
@@ -70,7 +72,6 @@ async function getRealArtistImage(artistName) {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(artistName)}&background=d946ef&color=fff&size=500`;
 }
 
-// FONCTION : Calculer "Il y a X temps"
 function timeAgo(date) {
     const seconds = Math.floor((new Date() - date) / 1000);
     let interval = seconds / 31536000;
@@ -98,7 +99,6 @@ async function getItemComments(itemId, itemType, userId) {
             ORDER BY c.date_commentaire DESC
         `, [userId || 0, itemId, itemType]);
         
-        // Appliquer le formatage de date
         comments.forEach(c => c.time_ago = timeAgo(c.date_commentaire));
         return comments;
     } catch (e) { return []; }
@@ -298,12 +298,17 @@ app.get('/album/:artist/:album', async (req, res) => {
             trackCount: tracks.length, totalDuration: `${totalHours > 0 ? totalHours + 'h ' : ''}${totalMins}min`, tracks: tracks
         };
 
-        const itemId = `${artist}::${album}`; // Utilisation d'un séparateur fort
+        const itemId = `${artist}::${album}`; 
         const userId = req.session.user ? req.session.user.id : 0;
         const comments = await getItemComments(itemId, 'album', userId);
 
         res.render('album.njk', { album: albumData, comments, itemId: itemId, itemType: 'album' });
     } catch (error) { res.status(500).send("Erreur album"); }
+});
+
+app.get('/notifications', (req, res) => {
+    const notifications = []; 
+    res.render('notifications.njk', { notifications, page: 'notifications' });
 });
 
 app.get('/api/match', async (req, res) => {
@@ -344,7 +349,7 @@ app.get('/api/suggest', async (req, res) => {
 });
 
 // ==========================================
-// 3. API : SYSTÈME DE COMMENTAIRES 
+// API : SYSTÈME DE COMMENTAIRES 
 // ==========================================
 
 app.post('/api/comments', async (req, res) => {
@@ -383,7 +388,6 @@ app.post('/api/comments/:id/report', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
 
-// NOUVEAU : Supprimer SON PROPRE commentaire
 app.delete('/api/comments/own/:id', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
     try {
@@ -392,7 +396,6 @@ app.delete('/api/comments/own/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
 
-// NOUVEAU : Modifier SON PROPRE commentaire
 app.put('/api/comments/own/:id', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
     try {
@@ -404,7 +407,7 @@ app.put('/api/comments/own/:id', async (req, res) => {
 });
 
 // ==========================================
-// 4. AUTHENTIFICATION
+// AUTHENTIFICATION
 // ==========================================
 
 app.get('/login', (req, res) => res.render('login.njk', { page: 'login' }));
@@ -434,50 +437,8 @@ app.post('/login', async (req, res) => {
     } catch (error) { res.render('login.njk', { page: 'login', error: "Erreur serveur." }); }
 });
 
-// 4. Recevoir les données d'inscription (Quand on clique sur "Créer mon compte")
-app.post('/register', async (req, res) => {
-    // Attention : dans le HTML le champ s'appelle "username"
-    const { username, email, password } = req.body;
-
-    try {
-        // 1. On vérifie si l'email ou le pseudo existe déjà dans la base
-        const [existingUsers] = await db.query(
-            'SELECT * FROM users WHERE email = ? OR pseudo = ?', 
-            [email, username]
-        );
-        
-        // Si on trouve quelqu'un, on bloque l'inscription
-        if (existingUsers.length > 0) {
-            return res.render('register.njk', { 
-                page: 'register', 
-                error: "Cet email ou ce nom d'utilisateur est déjà utilisé." 
-            });
-        }
-
-        // 2. Si tout est bon, on l'insère dans la base de données
-        const [result] = await db.query(
-            'INSERT INTO users (pseudo, email, password, role) VALUES (?, ?, ?, ?)',
-            [username, email, password, 'utilisateur']
-        );
-
-        // 3. On le connecte automatiquement (création de la session VIP)
-        req.session.user = {
-            id: result.insertId, // On récupère l'ID tout neuf généré par MySQL
-            pseudo: username,
-            role: 'utilisateur',
-            avatar: null
-        };
-
-        // 4. On l'envoie sur la page d'accueil !
-        res.redirect('/');
-
-    } catch (error) {
-        console.error(error);
-        res.render('register.njk', { 
-            page: 'register', 
-            error: "Une erreur est survenue lors de l'inscription. Veuillez réessayer." 
-        });
-    }
+app.post('/register', (req, res) => {
+    res.send("Formulaire d'inscription reçu ! Regarde ton terminal Node.js.");
 });
 
 app.get('/logout', (req, res) => {
@@ -487,7 +448,7 @@ app.get('/logout', (req, res) => {
 
 
 // ==========================================
-// 5. LE DASHBOARD ADMIN (SÉCURISÉ)
+// DASHBOARD ADMIN (SÉCURISÉ)
 // ==========================================
 
 app.get('/admin', requireAdmin, async (req, res) => {
@@ -508,14 +469,25 @@ app.get('/admin', requireAdmin, async (req, res) => {
             ORDER BY count DESC
         `);
 
-        // Créer les URL cliquables pour l'Admin
+        // GÉNÉRATION DES URLS CLIQUABLES (GÈRE LES NOUVEAUX ET LES ANCIENS COMMENTAIRES !)
         reports.forEach(r => {
-            if (r.item_type === 'track') r.url = '/details/' + encodeURIComponent(r.music_item_id);
-            else if (r.item_type === 'artist') r.url = '/artiste/' + encodeURIComponent(r.music_item_id);
-            else if (r.item_type === 'album') {
-                let parts = r.music_item_id.split('::'); // On gère le séparateur
-                if(parts.length === 2) r.url = '/album/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]);
-                else r.url = '#'; 
+            const itemId = r.music_item_id ? r.music_item_id.trim() : '';
+            if (r.item_type === 'track') {
+                r.url = '/details/' + encodeURIComponent(itemId);
+            } else if (r.item_type === 'artist') {
+                r.url = '/artiste/' + encodeURIComponent(itemId);
+            } else if (r.item_type === 'album') {
+                if (itemId.includes('::')) { // Nouveau format
+                    let parts = itemId.split('::'); 
+                    r.url = '/album/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]);
+                } else if (itemId.includes('-')) { // Ancien format
+                    let parts = itemId.split('-');
+                    r.url = '/album/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts.slice(1).join('-'));
+                } else {
+                    r.url = '#'; 
+                }
+            } else {
+                r.url = '#';
             }
         });
 
@@ -551,7 +523,7 @@ app.get('/admin', requireAdmin, async (req, res) => {
 });
 
 // ==========================================
-// 6. API ADMIN : ACTIONS
+// API ADMIN : ACTIONS
 // ==========================================
 app.use('/api/admin', requireAdmin);
 
