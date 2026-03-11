@@ -3,37 +3,61 @@ const nunjucks = require('nunjucks');
 const path = require('path');
 const axios = require('axios');
 const session = require('express-session');
-const db = require('./src/config/database'); // On importe notre connexion MySQL !
+const db = require('./src/config/database'); // Connexion MySQL
 require('dotenv').config();
 
 const app = express();
 const port = 3000;
 
-nunjucks.configure('views', {
-    autoescape: true,
-    express: app
-});
+// ==========================================
+// 1. CONFIGURATION ET MIDDLEWARES GLOBAUX
+// ==========================================
 
+nunjucks.configure('views', { autoescape: true, express: app });
 app.use(express.static(path.join(__dirname, 'public')));
-// Permet de lire les données envoyées par les formulaires HTML (POST)
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json()); // Indispensable pour l'API Admin
 
-// Configuration des Sessions (Le bracelet VIP)
 app.use(session({
-    secret: 'bpm_super_secret_key', // Une clé secrète pour crypter le cookie
+    secret: 'bpm_super_secret_key',
     resave: false,
     saveUninitialized: false
 }));
 
-// MIDDLEWARE MAGIQUE ✨ : Rend la variable "user" accessible dans TOUS les fichiers .njk
+// Variable globale pour la maintenance
+global.MAINTENANCE_MODE = false;
+
+// Middleware de Maintenance (Bloque l'accès si activé)
+app.use((req, res, next) => {
+    if (global.MAINTENANCE_MODE && !req.path.startsWith('/css') && !req.path.startsWith('/images') && !req.path.startsWith('/api')) {
+        const isAdmin = req.session.user && req.session.user.role === 'admin';
+        if (!isAdmin && req.path !== '/login' && req.path !== '/connexion') {
+            return res.status(503).send("<body style='background:#09090b; color:white; font-family:sans-serif; text-align:center; padding-top:100px;'><h1>🛠 Site en maintenance</h1><p>BPM revient très vite, nos équipes travaillent sur une mise à jour !</p></body>");
+        }
+    }
+    next();
+});
+
+// Middleware Global (Variables Nunjucks accessibles partout)
 app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
     next();
 });
 
-// ==========================================
-// PATCH SECRET : DEEZER UNIQUEMENT POUR LES PHOTOS MANQUANTES
-// ==========================================
+// VIGILE ADMIN : Middleware de sécurité stricte pour l'Admin
+function requireAdmin(req, res, next) {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        // Si c'est une requête API (un bouton cliqué), on renvoie une erreur JSON
+        if (req.path.startsWith('/api/')) {
+            return res.status(403).json({ error: "Accès refusé. Réservé aux administrateurs." });
+        }
+        // Sinon, on redirige vers l'accueil
+        return res.redirect('/');
+    }
+    next(); // L'utilisateur est bien admin, on le laisse passer !
+}
+
+// Fonction utilitaire (Image Deezer)
 async function getRealArtistImage(artistName) {
     try {
         const cleanName = artistName.split(',')[0].split('&')[0].trim();
@@ -47,99 +71,30 @@ async function getRealArtistImage(artistName) {
 }
 
 // ==========================================
-// ROUTE 1 : ACCUEIL
+// 2. ROUTES PUBLIQUES (Accueil, Recherche...)
 // ==========================================
+
 app.get('/', async (req, res) => {
     try {
         const API_KEY = process.env.LASTFM_API_KEY;
         const respArt = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=chart.gettopartists&api_key=${API_KEY}&format=json&limit=6`);
         
-const topArtists = await Promise.all(respArt.data.artists.artist.map(async a => {
+        const topArtists = await Promise.all(respArt.data.artists.artist.map(async a => {
             let listenerCount = parseInt(a.listeners);
-            // Si on a plus d'1 million, on divise par 1 million et on ajoute "M" (ex: 84.2M)
-            let formattedListeners = listenerCount >= 1000000 
-                ? (listenerCount / 1000000).toFixed(1) + "M" 
-                : listenerCount.toLocaleString('fr-FR'); // Sinon format normal (ex: 850 000)
-
-            return {
-                name: a.name,
-                listeners: formattedListeners,
-                image: await getRealArtistImage(a.name) // Le patch photo HD
-            };
+            let formattedListeners = listenerCount >= 1000000 ? (listenerCount / 1000000).toFixed(1) + "M" : listenerCount.toLocaleString('fr-FR');
+            return { name: a.name, listeners: formattedListeners, image: await getRealArtistImage(a.name) };
         }));
 
         const randomPage = Math.floor(Math.random() * 50) + 1;
         const respMatch = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=rj&api_key=${API_KEY}&format=json&limit=10&page=${randomPage}`);
         const initialMatch = respMatch.data.topalbums.album.sort(() => 0.5 - Math.random()).slice(0, 3).map(alb => ({
-            title: alb.name, artist: alb.artist.name,
-            image: alb.image[3]['#text'] || "https://via.placeholder.com/300"
+            title: alb.name, artist: alb.artist.name, image: alb.image[3]['#text'] || "https://via.placeholder.com/300"
         }));
 
         res.render('index.njk', { topArtists, heroArtist: topArtists[0], initialMatch, page: 'home' });
     } catch (e) { res.status(500).send("Erreur Accueil"); }
 });
 
-// ==========================================
-// ROUTE : API MATCH (BOUTON LANCER LE MATCH)
-// ==========================================
-app.get('/api/match', async (req, res) => {
-    try {
-        const API_KEY = process.env.LASTFM_API_KEY;
-        const randomPage = Math.floor(Math.random() * 100) + 1;
-        
-        // On va chercher une page aléatoire de musiques
-        const response = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=rj&api_key=${API_KEY}&format=json&limit=30&page=${randomPage}`);
-        const albums = response.data.topalbums.album;
-        
-        // On mélange les résultats
-        const shuffled = albums.sort(() => 0.5 - Math.random());
-        
-        const result = [];
-        const seenArtists = new Set();
-        
-        // On en sélectionne 3 au hasard avec des vraies images
-        for (let alb of shuffled) {
-            let img = alb.image[3]['#text'];
-            if (img && !img.includes('2a96cbd8') && !seenArtists.has(alb.artist.name)) {
-                result.push({ title: alb.name, artist: alb.artist.name, image: img });
-                seenArtists.add(alb.artist.name);
-            }
-            if (result.length === 3) break;
-        }
-        res.json(result);
-    } catch (error) {
-        res.status(500).json({ error: "Erreur Match" });
-    }
-});
-
-// ==========================================
-// ROUTE 2 : API SUGGESTIONS 
-// ==========================================
-app.get('/api/suggest', async (req, res) => {
-    try {
-        const { q } = req.query;
-        const API_KEY = process.env.LASTFM_API_KEY;
-        if (!q || q.length < 2) return res.json([]);
-
-        // On utilise Deezer pour l'autocomplete Artiste pour éviter les doublons horribles de Last.fm
-        const [artResp, albResp] = await Promise.all([
-            axios.get(`https://api.deezer.com/search/artist?q=${encodeURIComponent(q)}&limit=4`),
-            axios.get(`https://ws.audioscrobbler.com/2.0/?method=album.search&album=${encodeURIComponent(q)}&api_key=${API_KEY}&format=json&limit=4`)
-        ]);
-
-        let deezerArtists = artResp.data.data || [];
-        deezerArtists = deezerArtists.filter(a => !((a.name.includes('&') || a.name.includes(' feat')) && !q.includes('&')));
-        const artists = deezerArtists.slice(0, 4).map(a => ({ title: a.name, artist: "Artiste", type: "artiste" }));
-        
-        const albums = albResp.data.results.albummatches.album.map(a => ({ title: a.name, artist: a.artist, type: "album" }));
-        const combined = [...artists, ...albums];
-        res.json(combined);
-    } catch (e) { res.json([]); }
-});
-
-// ==========================================
-// ROUTE 3 : RECHERCHE GLOBALE
-// ==========================================
 app.get('/search', async (req, res) => {
     try {
         const { q, type, tag, years } = req.query;
@@ -149,37 +104,29 @@ app.get('/search', async (req, res) => {
         let results = [];
 
         if (searchQuery !== "") {
-            // Pour les Artistes, on cherche avec Deezer pour avoir les VRAIES PHOTOS sans doublons
             if (currentType === "Artiste") {
                 const resp = await axios.get(`https://api.deezer.com/search/artist?q=${encodeURIComponent(searchQuery)}&limit=15`);
                 let rawArtists = resp.data.data || [];
-                
                 rawArtists = rawArtists.filter(a => {
                     const n = a.name.toLowerCase();
                     const sq = searchQuery.toLowerCase();
                     if ((n.includes('&') || n.includes(' feat')) && !sq.includes('&')) return false;
                     return true;
                 });
-
                 results = rawArtists.map(a => {
                     let img = a.picture_xl;
                     if (!img || img.includes('/images/artist//')) img = `https://ui-avatars.com/api/?name=${encodeURIComponent(a.name)}&background=d946ef&color=fff&size=300`;
                     return { title: a.name, artist: "Artiste", image: img, type: "Artiste", year: years || "2024" };
                 });
-            } 
-            // Pour le reste (Albums, Musiques), on utilise 100% Last.fm
-            else {
+            } else {
                 let method = currentType === "Musique" ? "track.search&track=" : "album.search&album=";
                 const resp = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=${method}${encodeURIComponent(searchQuery)}&api_key=${API_KEY}&format=json&limit=15`);
-                
                 let rawResults = currentType === "Musique" ? resp.data.results.trackmatches.track : resp.data.results.albummatches.album;
                 rawResults = rawResults.filter((v, i, a) => a.findIndex(t => t.name.toLowerCase() === v.name.toLowerCase()) === i).slice(0, 15);
-
                 results = await Promise.all(rawResults.map(async (item) => {
                     let img = item.image ? item.image[3]['#text'] : "";
                     if (currentType === "Musique" && (!img || img.includes("2a96cbd8"))) img = await getRealArtistImage(item.artist);
                     else if (!img) img = "https://via.placeholder.com/300?text=No+Cover";
-
                     return { title: item.name, artist: item.artist, image: img, type: currentType, year: years || "2024" };
                 }));
             }
@@ -188,11 +135,7 @@ app.get('/search', async (req, res) => {
     } catch (e) { res.render('search.njk', { results: [], query: "Erreur" }); }
 });
 
-// ==========================================
-// ROUTE 4 : FICHE DÉTAILS MUSIQUE
-// ==========================================
 app.get('/details/:name', async (req, res) => {
-    // [Le code de la fiche musique reste inchangé, il utilise Last.fm]
     try {
         const API_KEY = process.env.LASTFM_API_KEY;
         const trackName = req.params.name;
@@ -219,15 +162,10 @@ app.get('/details/:name', async (req, res) => {
     } catch (e) { res.status(500).send("Erreur détails"); }
 });
 
-// ==========================================
-// ROUTE 5 : FICHE ARTISTE (LE MIX PARFAIT)
-// ==========================================
 app.get('/artiste/:name', async (req, res) => {
     try {
         const API_KEY = process.env.LASTFM_API_KEY;
         const artistName = req.params.name;
-
-        // 1. On récupère 90% des infos sur Last.fm (Bio, Top 4 albums populaires, Top Titres, Auditeurs)
         const [infoResp, albumsResp, tracksResp] = await Promise.all([
             axios.get(`https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(artistName)}&api_key=${API_KEY}&format=json`),
             axios.get(`https://ws.audioscrobbler.com/2.0/?method=artist.getTopAlbums&artist=${encodeURIComponent(artistName)}&api_key=${API_KEY}&format=json&limit=4`),
@@ -238,20 +176,14 @@ app.get('/artiste/:name', async (req, res) => {
         let finalImage = `https://ui-avatars.com/api/?name=${encodeURIComponent(artistName)}&background=d946ef&color=fff&size=500`;
         let strictAlbumCount = 4;
 
-        // 2. LE PATCH SECRET DEEZER (Juste pour la photo HD et le vrai nombre d'albums studios)
         try {
             const cleanName = artistName.split(',')[0].split('&')[0].trim();
             const dzResp = await axios.get(`https://api.deezer.com/search/artist?q=${encodeURIComponent(cleanName)}`);
-            
             if (dzResp.data && dzResp.data.data && dzResp.data.data.length > 0) {
                 const dzArtist = dzResp.data.data[0];
-                
-                // Photo HD
                 if (dzArtist.picture_xl && !dzArtist.picture_xl.includes('/images/artist//')) {
                     finalImage = dzArtist.picture_xl;
                 }
-
-                // Compteur strict (on rejette les best-of, remixes, etc.)
                 const dzAlbumsResp = await axios.get(`https://api.deezer.com/artist/${dzArtist.id}/albums?limit=100`);
                 if (dzAlbumsResp.data && dzAlbumsResp.data.data) {
                     let vraisAlbums = dzAlbumsResp.data.data.filter(alb => alb.record_type === 'album');
@@ -263,44 +195,30 @@ app.get('/artiste/:name', async (req, res) => {
                         let titreBasique = alb.title.toLowerCase();
                         let contientMotInterdit = motsInterdits.some(mot => titreBasique.includes(mot));
                         let titrePropre = titreBasique.replace(/\s*\(.*?\)\s*/g, '').replace(/\[.*?\]/g, '').trim();
-                        
                         if (!titresUniques.has(titrePropre) && !contientMotInterdit) {
                             titresUniques.add(titrePropre);
                             albumsPurifies.push(alb);
                         }
                     });
-                    strictAlbumCount = albumsPurifies.length; // Pour Michael Jackson, ça donnera un chiffre autour de 10-15 !
+                    strictAlbumCount = albumsPurifies.length;
                 }
             }
         } catch (e) {}
 
         const artistData = {
-            name: a.name,
-            image: finalImage, // La vraie photo HD
-            listeners: parseInt(a.stats.listeners).toLocaleString('fr-FR'), // Les stats Last.fm
-            totalAlbums: strictAlbumCount > 0 ? strictAlbumCount : albumsResp.data.topalbums.album.length, // Le VRAI chiffre
-            bio: a.bio.summary ? a.bio.summary.split('<a')[0] : "Pas de bio disponible.", // La bio Last.fm
+            name: a.name, image: finalImage,
+            listeners: parseInt(a.stats.listeners).toLocaleString('fr-FR'),
+            totalAlbums: strictAlbumCount > 0 ? strictAlbumCount : albumsResp.data.topalbums.album.length,
+            bio: a.bio.summary ? a.bio.summary.split('<a')[0] : "Pas de bio disponible.",
             tags: a.tags.tag.slice(0, 6),
-            albums: albumsResp.data.topalbums.album.map(alb => ({
-                title: alb.name,
-                image: alb.image[3]['#text'] || 'https://via.placeholder.com/150'
-            })),
-            topTracks: tracksResp.data.toptracks.track.map((t, index) => ({
-                rank: index + 1,
-                title: t.name,
-                listeners: (parseInt(t.listeners) / 1000000).toFixed(1) + "M"
-            }))
+            albums: albumsResp.data.topalbums.album.map(alb => ({ title: alb.name, image: alb.image[3]['#text'] || 'https://via.placeholder.com/150' })),
+            topTracks: tracksResp.data.toptracks.track.map((t, index) => ({ rank: index + 1, title: t.name, listeners: (parseInt(t.listeners) / 1000000).toFixed(1) + "M" }))
         };
-
         res.render('artist.njk', { artist: artistData });
     } catch (error) { res.status(500).send("Artiste introuvable"); }
 });
 
-// ==========================================
-// ROUTE 6 : FICHE ALBUM
-// ==========================================
 app.get('/album/:artist/:album', async (req, res) => {
-    // [Identique, full Last.fm]
     try {
         const API_KEY = process.env.LASTFM_API_KEY;
         const { artist, album } = req.params;
@@ -318,7 +236,6 @@ app.get('/album/:artist/:album', async (req, res) => {
                 return { name: t.name, duration: duration > 0 ? Math.floor(duration / 60) + ":" + (duration % 60).toString().padStart(2, '0') : "--:--", rank: t['@attr']?.rank || 1, playcount: (Math.random() * (1.5 - 0.5) + 0.5).toFixed(1) + "M" };
             });
         }
-
         const totalHours = Math.floor(totalMs / 3600);
         const totalMins = Math.floor((totalMs % 3600) / 60);
 
@@ -331,101 +248,274 @@ app.get('/album/:artist/:album', async (req, res) => {
     } catch (error) { res.status(500).send("Erreur album"); }
 });
 
-app.listen(port, () => { console.log(`✅ Serveur BPM lancé sur http://localhost:${port}`); });
-
-
-// ==========================================
-// ROUTE : NOTIFICATIONS
-// ==========================================
 app.get('/notifications', (req, res) => {
-    
-    // Pour l'instant on a pas de base de données, donc on envoie un tableau vide
-    const notifications = [];
-
-    /* // Quand tu voudras tester le design avec des fausses données, décommente ça :
-    const notifications = [
-        { type: 'like', icon: 'heart', color: '#e12afb', bgColor: 'rgba(225, 42, 251, 0.1)', user: 'Sarah_K', action: 'a aimé votre commentaire sur Starboy', time: 'Il y a 10 min' },
-        { type: 'follow', icon: 'user-plus', color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.1)', user: 'Marc_Music', action: 'a commencé à vous suivre', time: 'Il y a 2 heures' },
-        { type: 'rating', icon: 'star', color: '#eab308', bgColor: 'rgba(234, 179, 8, 0.1)', user: 'Vinyl_Lover', action: 'a noté 5 étoiles un album que vous avez aimé', time: 'Hier' }
-    ];
-    */
-
+    const notifications = []; // Vide pour le moment
     res.render('notifications.njk', { notifications, page: 'notifications' });
 });
 
 // ==========================================
-// ROUTES : AUTHENTIFICATION (Login / Register / Logout)
+// 3. API PUBLIQUE (Boutons Match et Recherche)
 // ==========================================
 
-// 1. Afficher la page de connexion
-app.get('/login', (req, res) => {
-    res.render('login.njk', { page: 'login' });
+app.get('/api/match', async (req, res) => {
+    try {
+        const API_KEY = process.env.LASTFM_API_KEY;
+        const randomPage = Math.floor(Math.random() * 100) + 1;
+        const response = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=rj&api_key=${API_KEY}&format=json&limit=30&page=${randomPage}`);
+        const albums = response.data.topalbums.album.sort(() => 0.5 - Math.random());
+        const result = [];
+        const seenArtists = new Set();
+        
+        for (let alb of albums) {
+            let img = alb.image[3]['#text'];
+            if (img && !img.includes('2a96cbd8') && !seenArtists.has(alb.artist.name)) {
+                result.push({ title: alb.name, artist: alb.artist.name, image: img });
+                seenArtists.add(alb.artist.name);
+            }
+            if (result.length === 3) break;
+        }
+        res.json(result);
+    } catch (error) { res.status(500).json({ error: "Erreur Match" }); }
 });
 
-// Recevoir les données de connexion
+app.get('/api/suggest', async (req, res) => {
+    try {
+        const { q } = req.query;
+        const API_KEY = process.env.LASTFM_API_KEY;
+        if (!q || q.length < 2) return res.json([]);
+
+        const [artResp, albResp] = await Promise.all([
+            axios.get(`https://api.deezer.com/search/artist?q=${encodeURIComponent(q)}&limit=4`),
+            axios.get(`https://ws.audioscrobbler.com/2.0/?method=album.search&album=${encodeURIComponent(q)}&api_key=${API_KEY}&format=json&limit=4`)
+        ]);
+
+        let deezerArtists = artResp.data.data || [];
+        deezerArtists = deezerArtists.filter(a => !((a.name.includes('&') || a.name.includes(' feat')) && !q.includes('&')));
+        const artists = deezerArtists.slice(0, 4).map(a => ({ title: a.name, artist: "Artiste", type: "artiste" }));
+        const albums = albResp.data.results.albummatches.album.map(a => ({ title: a.name, artist: a.artist, type: "album" }));
+        
+        res.json([...artists, ...albums]);
+    } catch (e) { res.json([]); }
+});
+
+// ==========================================
+// 4. AUTHENTIFICATION (Login / Register)
+// ==========================================
+
+app.get('/login', (req, res) => res.render('login.njk', { page: 'login' }));
+app.get('/register', (req, res) => res.render('register.njk', { page: 'register' }));
+app.get('/connexion', (req, res) => res.redirect('/login'));
+app.get('/inscription', (req, res) => res.redirect('/register'));
+
 app.post('/login', async (req, res) => {
     const { email, password } = req.body;
-
     try {
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        if (users.length === 0) return res.render('login.njk', { page: 'login', error: "Email introuvable." });
         
-        // Erreur 1 : L'email n'existe pas
-        if (users.length === 0) {
-            return res.render('login.njk', { 
-                page: 'login', 
-                error: "Aucun compte n'est associé à cette adresse email. Veuillez réessayer ou vous inscrire." 
-            });
-        }
-
         const user = users[0];
-
-        // Erreur 2 : Le mot de passe est faux
+        
         if (password === user.password) {
-            req.session.user = {
-                id: user.id,
-                pseudo: user.pseudo,
-                role: user.role,
-                avatar: user.avatar
-            };
+            // 1. VÉRIFICATION MAINTENANCE (Seul l'admin passe)
+            if (global.MAINTENANCE_MODE && user.role !== 'admin') {
+                return res.render('login.njk', { page: 'login', error: "🛠 Le site est en maintenance. Seuls les administrateurs peuvent se connecter." });
+            }
+            // 2. VÉRIFICATION BANNISSEMENT (is_banned est un booléen / 0 ou 1)
+            if (user.is_banned == 1) {
+                return res.render('login.njk', { page: 'login', error: "🚨 Votre compte a été banni par un administrateur." });
+            }
+
+            req.session.user = { id: user.id, pseudo: user.pseudo, role: user.role, avatar: user.avatar };
             res.redirect('/');
         } else {
-            return res.render('login.njk', { 
-                page: 'login', 
-                error: "Le mot de passe est incorrect." 
-            });
+            res.render('login.njk', { page: 'login', error: "Mot de passe incorrect." });
         }
-    } catch (error) {
-        console.error(error);
-        res.render('login.njk', { 
-            page: 'login', 
-            error: "Erreur serveur. Veuillez réessayer plus tard." 
-        });
-    }
+    } catch (error) { res.render('login.njk', { page: 'login', error: "Erreur serveur." }); }
 });
 
-// Le vrai code de Déconnexion
-app.get('/logout', (req, res) => {
-    req.session.destroy(); // On déchire le bracelet VIP
-    res.redirect('/'); // Retour à l'accueil
-});
-
-// 3. Afficher la page d'inscription
-app.get('/register', (req, res) => {
-    res.render('register.njk', { page: 'register' });
-});
-
-// 4. Recevoir les données d'inscription (Quand on clique sur "Créer mon compte")
 app.post('/register', (req, res) => {
     const { pseudo, email, password } = req.body;
-    console.log("👉 Nouvel utilisateur ! Pseudo:", pseudo, "Email:", email);
-    
-    // TODO : Ici, on fera la requête SQL pour insérer le nouvel utilisateur.
+    // TODO : Insérer l'utilisateur en BDD
     res.send("Formulaire d'inscription reçu ! Regarde ton terminal Node.js.");
 });
 
-// 5. Se déconnecter
 app.get('/logout', (req, res) => {
-    // TODO : Plus tard, on détruira la session ici.
-    res.redirect('/'); // On renvoie vers l'accueil
+    req.session.destroy();
+    res.redirect('/');
 });
 
+
+// ==========================================
+// 5. LE DASHBOARD ADMIN (SÉCURISÉ)
+// ==========================================
+
+// On applique le vigile "requireAdmin" UNIQUEMENT sur la page /admin
+app.get('/admin', requireAdmin, async (req, res) => {
+    try {
+        const API_KEY = process.env.LASTFM_API_KEY;
+
+        // Utilisateurs
+        const [users] = await db.query("SELECT id, pseudo, email, role, is_banned FROM users ORDER BY id DESC LIMIT 50");
+        
+        // Signalements
+        const [reports] = await db.query(`
+            SELECT c.id as comment_id, u.pseudo, c.commentaire as comment, rc.reason, COUNT(rc.id) as count 
+            FROM reports_commentaire rc
+            JOIN commentaires c ON rc.commentaire_id = c.id
+            JOIN users u ON c.user_id = u.id
+            GROUP BY c.id, u.pseudo, c.commentaire, rc.reason
+            ORDER BY count DESC
+        `);
+
+        // Artistes à la une
+        const [dbArtists] = await db.query("SELECT * FROM featured_artists ORDER BY rang ASC, id ASC LIMIT 6");
+        let featuredArtists = [];
+        
+        for (let i = 0; i < dbArtists.length; i++) {
+            const a = dbArtists[i];
+            let listeners = "0M";
+            try {
+                const infoResp = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(a.api_artist_id)}&api_key=${API_KEY}&format=json`);
+                if (infoResp.data.artist) {
+                    let lst = parseInt(infoResp.data.artist.stats.listeners);
+                    listeners = lst >= 1000000 ? (lst / 1000000).toFixed(1) + "M" : lst.toLocaleString('fr-FR');
+                }
+            } catch(e) {}
+            
+            featuredArtists.push({
+                db_id: a.id,
+                position: a.rang,
+                name: a.api_artist_id,
+                listeners: listeners,
+                image: await getRealArtistImage(a.api_artist_id),
+                desc: a.accroche || ""
+            });
+        }
+
+        // Stats globales
+        const [[{ totalU }]] = await db.query("SELECT COUNT(*) as totalU FROM users");
+        const [[{ totalC }]] = await db.query("SELECT COUNT(*) as totalC FROM commentaires");
+        const [[{ totalR }]] = await db.query("SELECT COUNT(*) as totalR FROM reports_commentaire");
+
+        res.render('admin.njk', { 
+            page: 'admin', 
+            users, reports, featuredArtists,
+            isMaintenance: global.MAINTENANCE_MODE,
+            stats: { users: totalU.toLocaleString('fr-FR'), comments: totalC.toLocaleString('fr-FR'), reports: totalR, artists: featuredArtists.length }
+        });
+    } catch (error) {
+        console.error("Erreur Dashboard:", error);
+        res.status(500).send("Erreur serveur lors du chargement du Dashboard.");
+    }
+});
+
+
+// ==========================================
+// 6. API ADMIN : ACTIONS (SÉCURISÉES)
+// ==========================================
+// On applique le vigile "requireAdmin" à TOUTES les requêtes qui commencent par /api/admin/
+app.use('/api/admin', requireAdmin);
+
+// MAINTENANCE
+app.post('/api/admin/maintenance', (req, res) => {
+    global.MAINTENANCE_MODE = req.body.active;
+    res.json({ success: true });
+});
+
+// UTILISATEURS
+app.post('/api/admin/users/:id/ban', async (req, res) => {
+    try {
+        const [users] = await db.query("SELECT is_banned FROM users WHERE id = ?", [req.params.id]);
+        if (users.length === 0) return res.status(404).json({ error: "Introuvable" });
+        const newStatus = users[0].is_banned == 1 ? 0 : 1; 
+        await db.query("UPDATE users SET is_banned = ? WHERE id = ?", [newStatus, req.params.id]);
+        res.json({ success: true, is_banned: newStatus });
+    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+});
+
+app.delete('/api/admin/users/:id', async (req, res) => {
+    try {
+        await db.query("DELETE FROM users WHERE id = ?", [req.params.id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+});
+
+// ==========================================
+// API ADMIN : GESTION DES COMMENTAIRES
+// ==========================================
+
+// Bouton VALIDER (Check) : Ignorer le signalement
+app.post('/api/admin/reports/:comment_id/ignore', async (req, res) => {
+    try {
+        // Ça supprime UNIQUEMENT le signalement.
+        // Le commentaire est donc "blanchi" et reste visible par les autres utilisateurs.
+        await db.query("DELETE FROM reports_commentaire WHERE commentaire_id = ?", [req.params.comment_id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+});
+
+// Bouton POUBELLE : Supprimer le commentaire signalé
+app.delete('/api/admin/comments/:id', async (req, res) => {
+    try {
+        // Ça supprime LE commentaire ciblé. 
+        // (Et grâce au "ON DELETE CASCADE" de ta base de données, ça effacera automatiquement les signalements liés à ce commentaire précis, sans toucher aux autres commentaires !)
+        await db.query("DELETE FROM commentaires WHERE id = ?", [req.params.id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+});
+
+// ARTISTES À LA UNE
+app.post('/api/admin/artists/replace', async (req, res) => {
+    try {
+        const { oldArtistId, newArtistName } = req.body;
+        const [existing] = await db.query("SELECT * FROM featured_artists WHERE LOWER(api_artist_id) = LOWER(?)", [newArtistName]);
+        if (existing.length > 0) return res.json({ error: "Cet artiste est déjà à la une !" });
+
+        await db.query("UPDATE featured_artists SET api_artist_id = ?, accroche = NULL WHERE id = ?", [newArtistName, oldArtistId]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur" }); }
+});
+
+app.post('/api/admin/artists/:id/randomize', async (req, res) => {
+    try {
+        const API_KEY = process.env.LASTFM_API_KEY;
+        const respArt = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=chart.gettopartists&api_key=${API_KEY}&format=json&limit=50`);
+        const allArtists = respArt.data.artists.artist.map(a => a.name);
+
+        const [currentDb] = await db.query("SELECT api_artist_id FROM featured_artists");
+        const currentNames = currentDb.map(row => row.api_artist_id.toLowerCase());
+
+        let randomArtist = allArtists.find(name => !currentNames.includes(name.toLowerCase()));
+        if (!randomArtist) randomArtist = "Daft Punk";
+
+        await db.query("UPDATE featured_artists SET api_artist_id = ?, accroche = NULL WHERE id = ?", [randomArtist, req.params.id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur" }); }
+});
+
+app.post('/api/admin/artists/reorder', async (req, res) => {
+    try {
+        const { id, newPosition } = req.body;
+        const [current] = await db.query("SELECT rang FROM featured_artists WHERE id = ?", [id]);
+        const oldPosition = current[0].rang;
+
+        await db.query("UPDATE featured_artists SET rang = ? WHERE rang = ?", [oldPosition, newPosition]);
+        await db.query("UPDATE featured_artists SET rang = ? WHERE id = ?", [newPosition, id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur" }); }
+});
+
+app.post('/api/admin/artists/description', async (req, res) => {
+    try {
+        const { id, desc } = req.body;
+        await db.query("UPDATE featured_artists SET accroche = ? WHERE id = ?", [desc, id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur" }); }
+});
+
+// ==========================================
+// LANCEMENT DU SERVEUR
+// ==========================================
+app.listen(port, () => { 
+    console.log(`✅ Serveur BPM lancé sur http://localhost:${port}`); 
+});
