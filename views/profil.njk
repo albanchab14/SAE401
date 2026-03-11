@@ -3,7 +3,7 @@
 {% block content %}
 <div class="profile-page">
 
-    <div class="profile-header-card">
+    <div class="profile-header-card" style="align-items: flex-start;">
         
         <div id="profile-view" style="display: flex; gap: 40px; flex: 1; align-items: center;">
             <div class="profile-avatar-wrapper">
@@ -30,40 +30,44 @@
             
             <input type="file" id="avatar-upload" style="display: none;" accept="image/*">
             <div class="profile-avatar-wrapper edit-avatar" style="cursor: pointer;" onclick="document.getElementById('avatar-upload').click()">
-                <img src="{{ user.avatar }}" alt="Avatar" class="profile-avatar dim-avatar">
+                <img src="{{ user.avatar }}" alt="Avatar" id="avatar-preview" class="profile-avatar dim-avatar" style="object-fit: cover;">
                 <div class="camera-icon">
                     <i data-lucide="camera" style="width: 24px; height: 24px; color: white;"></i>
                 </div>
-                <button class="btn-avatar-edit">
-                    <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
-                </button>
             </div>
 
-            <div class="edit-form-fields" style="flex: 1;">
-                <input type="text" id="edit-pseudo" value="{{ user.name }}" class="edit-input" placeholder="Pseudo" style="width: 100%; margin-bottom: 10px; padding: 10px; background: #09090b; border: 1px solid #3f3f46; color: white; border-radius: 8px;">
-                <input type="email" id="edit-email" value="{{ user.email }}" class="edit-input" placeholder="Email" oninput="this.value = this.value.replace(/\s/g, '')" style="width: 100%; margin-bottom: 10px; padding: 10px; background: #09090b; border: 1px solid #3f3f46; color: white; border-radius: 8px;">
-                <input type="password" id="edit-password" class="edit-input" placeholder="Nouveau mot de passe (laisser vide pour ne pas changer)" style="width: 100%; margin-bottom: 10px; padding: 10px; background: #09090b; border: 1px solid #3f3f46; color: white; border-radius: 8px;">
-                <textarea id="edit-bio" class="edit-textarea" placeholder="Votre biographie" style="width: 100%; margin-bottom: 15px; padding: 10px; background: #09090b; border: 1px solid #3f3f46; color: white; border-radius: 8px; min-height: 80px;">{{ user.bio }}</textarea>
+            <div class="edit-form-fields" style="flex: 1; max-width: 400px;">
+                <input type="text" id="edit-pseudo" value="{{ user.name }}" class="edit-input-modern" placeholder="Pseudo">
                 
-                <div class="edit-actions" style="display: flex; gap: 10px;">
-                    <button class="btn-save" onclick="saveProfile()" style="background: #2b7fff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Sauvegarder</button>
-                    <button class="btn-cancel" onclick="toggleEditProfile()" style="background: transparent; color: #a1a1aa; border: 1px solid #3f3f46; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Annuler</button>
+                <input type="email" id="edit-email" value="{{ user.email }}" class="edit-input-modern" placeholder="Adresse email" oninput="this.value = this.value.replace(/\s/g, '')">
+                
+                <input type="password" id="edit-password" class="edit-input-modern" placeholder="Nouveau mot de passe (optionnel)">
+                
+                <textarea id="edit-bio" class="edit-textarea-modern" placeholder="Votre biographie...">{{ user.bio }}</textarea>
+                
+                <div style="display: flex; gap: 12px; margin-top: 10px;">
+                    <button class="btn-save-modern" onclick="saveProfile()">Sauvegarder</button>
+                    <button class="btn-cancel-modern" onclick="toggleEditProfile()">Annuler</button>
                 </div>
             </div>
         </div>
 
-        <div class="profile-stats">
-            <div class="stat-item">
-                <span class="stat-number">{{ user.stats.favoris }}</span>
-                <span class="stat-label">FAVORIS</span>
+        <div class="profile-stats-modern">
+            <div class="stat-item-modern">
+                <span class="stat-number-modern stat-color-1">{{ user.stats.favoris }}</span>
+                <span class="stat-label-modern">FAVORIS</span>
             </div>
-            <div class="stat-item">
-                <span class="stat-number">{{ user.stats.avis }}</span>
-                <span class="stat-label">AVIS</span>
+            <div class="stat-separator"></div>
+            <div class="stat-item-modern">
+                <span class="stat-number-modern stat-color-2">{{ user.stats.avis }}</span>
+                <span class="stat-label-modern">AVIS</span>
             </div>
-            <div class="stat-item">
-                <span class="stat-number">{{ user.stats.suivis }}</span>
-                <span class="stat-label">SUIVIS</span>
+            <div class="stat-separator"></div>
+            <div class="stat-item-modern">
+                <span class="stat-number-modern stat-color-3">
+                    {% if user.stats.suivis >= 1000 %}{{ (user.stats.suivis / 1000).toFixed(1) }}k{% else %}{{ user.stats.suivis }}{% endif %}
+                </span>
+                <span class="stat-label-modern">SUIVIS</span>
             </div>
         </div>
     </div>
@@ -178,7 +182,6 @@
             </p>
             <i data-lucide="music" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); width: 140px; height: 140px; color: rgba(255, 255, 255, 0.03); z-index: 1;"></i>
         </div>
-
     </div>
 
 </div>
@@ -199,12 +202,45 @@
 
         <div style="display: flex; gap: 12px;">
             <button onclick="closeEditModal()" style="flex: 1; background: #09090b; border: 1px solid #3f3f46; color: white; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer;">Annuler</button>
-            <button onclick="submitEditComment()" style="flex: 1; background: #2b7fff; border: none; color: white; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer;">Enregistrer</button>
+            <button onclick="submitEditComment()" style="flex: 1; background: #d946ef; border: none; color: white; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer;">Enregistrer</button>
         </div>
     </div>
 </div>
 
 <style>
+    /* DESIGN DU NOUVEAU FORMULAIRE */
+    .edit-input-modern, .edit-textarea-modern {
+        background: #000000;
+        border: 1px solid #27272a;
+        color: white;
+        padding: 14px 16px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        font-family: inherit;
+        font-size: 15px;
+        outline: none;
+        transition: 0.2s;
+    }
+    .edit-input-modern:focus, .edit-textarea-modern:focus { border-color: #d946ef; }
+    
+    .btn-save-modern { background: #d946ef; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-save-modern:hover { background: #e12afb; }
+    
+    .btn-cancel-modern { background: #27272a; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-cancel-modern:hover { background: #3f3f46; }
+
+    /* DESIGN DE LA BOÎTE DE STATISTIQUES (AVEC DÉGRADÉS) */
+    .profile-stats-modern { display: flex; align-items: center; background: #0c0c0e; border: 1px solid #1a1a1c; border-radius: 16px; padding: 20px 40px; gap: 30px; }
+    .stat-item-modern { display: flex; flex-direction: column; align-items: center; }
+    .stat-separator { width: 1px; height: 40px; background: #27272a; }
+    
+    .stat-number-modern { font-size: 32px; font-weight: 900; line-height: 1; margin-bottom: 6px; }
+    .stat-color-1 { background: linear-gradient(90deg, #d946ef, #e12afb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .stat-color-2 { background: linear-gradient(90deg, #a855f7, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .stat-color-3 { background: linear-gradient(90deg, #f43f5e, #ff2056); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    
+    .stat-label-modern { font-size: 10px; color: #71717b; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; }
+
     .star-edit { color: #71717b; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; }
     .star-edit svg { width: 24px; height: 24px; transition: 0.2s; pointer-events: none; }
 </style>
@@ -224,6 +260,18 @@ function toggleEditProfile() {
     document.getElementById('profile-edit').classList.toggle('hidden');
 }
 
+// PRÉVISUALISATION EN DIRECT DE L'IMAGE UPLOADÉE
+document.getElementById('avatar-upload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            document.getElementById('avatar-preview').src = event.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
+});
+
 // ENVOI DU PROFIL AVEC GESTION DE L'IMAGE (FormData)
 async function saveProfile() {
     const pseudo = document.getElementById('edit-pseudo').value;
@@ -241,7 +289,7 @@ async function saveProfile() {
 
     const res = await fetch('/api/profil/edit', {
         method: 'POST',
-        body: formData // On n'utilise pas JSON.stringify car on envoie un fichier !
+        body: formData // On n'utilise pas JSON.stringify car on envoie un fichier Multimédia !
     });
 
     if (res.ok) window.location.reload();
@@ -283,7 +331,7 @@ if (editStarContainer) {
         editStars.forEach((s) => {
             const val = parseInt(s.getAttribute('data-val'));
             const svg = s.querySelector('svg');
-            if (val <= count) { svg.style.fill = '#2b7fff'; svg.style.color = '#2b7fff'; } 
+            if (val <= count) { svg.style.fill = '#f0b100'; svg.style.color = '#f0b100'; } 
             else { svg.style.fill = 'none'; svg.style.color = '#71717b'; }
         });
     }
