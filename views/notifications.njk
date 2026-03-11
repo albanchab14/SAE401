@@ -15,7 +15,7 @@
         {% if notifications.length > 0 %}
             
             {% for notif in notifications %}
-            <div class="notif-card">
+            <div class="notif-card" id="notif-{{ notif.id }}">
                 <div class="notif-icon-wrapper" style="background-color: {{ notif.bgColor }};">
                     <i data-lucide="{{ notif.icon }}" style="color: {{ notif.color }}; width: 20px;"></i>
                 </div>
@@ -25,6 +25,9 @@
                     </p>
                     <span class="notif-time">{{ notif.time }}</span>
                 </div>
+                <button class="delete-notif-btn" data-id="{{ notif.id }}" title="Supprimer">
+                    <i data-lucide="trash-2"></i>
+                </button>
             </div>
             {% endfor %}
 
@@ -161,12 +164,82 @@
         color: #a1a1aa;
         font-size: 15px;
     }
+
+    .delete-notif-btn {
+        margin-left: auto; /* Pousse le bouton tout à droite */
+        background: transparent;
+        border: none;
+        color: #71717b;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .delete-notif-btn:hover {
+        background-color: rgba(239, 68, 68, 0.1); /* Fond rouge léger */
+        color: #ef4444; /* Poubelle rouge */
+    }
 </style>
 
 <script>
-    // Initialiser les icônes si elles ne le sont pas déjà
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. GESTION DE LA POUBELLE
+    const deleteBtns = document.querySelectorAll('.delete-notif-btn');
+    
+    deleteBtns.forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const notifId = this.getAttribute('data-id');
+            const card = document.getElementById(`notif-${notifId}`);
+            
+            // Appel à la route Node.js en tâche de fond
+            const response = await fetch(`/notifications/delete/${notifId}`, { method: 'POST' });
+            const data = await response.json();
+            
+            if (data.success) {
+                // Animation de disparition
+                card.style.opacity = '0';
+                card.style.transform = 'translateX(20px)';
+                card.style.transition = 'all 0.3s ease';
+                setTimeout(() => card.remove(), 300); // Supprime le HTML après l'animation
+            }
+        });
+    });
+
+    // 2. GESTION DU "TOUT MARQUER COMME LU"
+    const markAllBtn = document.querySelector('.mark-read-btn');
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', async () => {
+            const response = await fetch('/notifications/read-all', { method: 'POST' });
+            const data = await response.json();
+            
+            if (data.success) {
+                const notifList = document.querySelector('.notifications-list');
+                // On vide la liste avec une animation
+                notifList.style.opacity = '0';
+                notifList.style.transition = 'opacity 0.3s ease';
+                
+                setTimeout(() => {
+                    // On affiche le design "Vide" (ton empty-state)
+                    notifList.innerHTML = `
+                        <div class="empty-state">
+                            <i data-lucide="bell-off" class="empty-icon"></i>
+                            <h2>Aucune notification</h2>
+                            <p>Vous êtes à jour ! Vos notifications apparaîtront ici quand vous en recevrez.</p>
+                        </div>
+                    `;
+                    notifList.style.opacity = '1';
+                    markAllBtn.style.display = 'none'; // Cache le bouton "Tout marquer"
+                    lucide.createIcons(); // Recharge l'icône bell-off
+                }, 300);
+            }
+        });
     }
+
+    lucide.createIcons();
+});
 </script>
 {% endblock %}
