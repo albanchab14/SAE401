@@ -4,6 +4,7 @@ const path = require('path');
 const axios = require('axios');
 const session = require('express-session');
 const db = require('./src/config/database');
+const bcrypt = require('bcrypt');
 require('dotenv').config();
 
 const app = express();
