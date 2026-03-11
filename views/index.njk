@@ -3,6 +3,7 @@
 {% block content %}
 <div class="page-content">
 
+  {% if heroArtist %}
   <section class="hero">
     <img src="{{ heroArtist.image }}" alt="{{ heroArtist.name }}" class="hero-bg">
     <div class="hero-overlay">
@@ -11,7 +12,7 @@
         ARTISTE À LA UNE
       </div>
       <h1>{{ heroArtist.name }}</h1>
-      <p>Découvrez l'univers de {{ heroArtist.name }}, l'un des artistes les plus écoutés du moment sur BPM.</p>
+      <p>{{ heroArtist.accroche }}</p>
       <div>
         <a href="/artiste/{{ heroArtist.name | urlencode }}" class="btn">
           Voir les détails
@@ -19,6 +20,7 @@
       </div>
     </div>
   </section>
+  {% endif %}
 
   <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
     <h2 class="section-title">Artistes Populaires</h2>
@@ -33,7 +35,7 @@
         <h3 style="color: white; font-size: 16px; font-weight: 700; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ artist.name }}</h3>
         
         <p style="color: #a1a1aa; font-size: 13px; margin: 6px 0 0 0; display: flex; align-items: center; gap: 6px;">
-          <i data-lucide="music" style="width: 14px; height: 14px;"></i> <span class="format-num">{{ artist.listeners }}</span>
+          <i data-lucide="music" style="width: 14px; height: 14px;"></i> {{ artist.listeners }}
         </p>
       </div>
     </a>
@@ -59,36 +61,22 @@
 </div>
 
 <script>
-  // 1. FORMATAGE DES AUDITEURS (Transforme les millions en "M")
-  document.querySelectorAll('.format-num').forEach(el => {
-    // On extrait uniquement les chiffres de la donnée reçue
-    let text = el.innerText.replace(/[^0-9]/g, ''); 
-    let num = parseInt(text);
-    
-    if (!isNaN(num)) {
-      if (num >= 1000000) {
-        // Divise par 1 million et garde 1 chiffre après la virgule (ex: 84.2M)
-        el.innerText = (num / 1000000).toFixed(1) + "M";
-      } else {
-        // Formatage normal avec des espaces pour les plus petits (ex: 850 000)
-        el.innerText = num.toLocaleString('fr-FR');
-      }
-    }
-  });
-
-  // 2. SCRIPT DU BOUTON MATCH
-  document.getElementById('btn-match').addEventListener('click', async () => {
-    const res = await fetch('/api/match');
-    const data = await res.json();
-    const container = document.getElementById('match-results');
-    container.innerHTML = '';
-    data.forEach((item, i) => {
-      const angles = [-10, 5, -5];
-      container.innerHTML += `
-        <a href="/album/${encodeURIComponent(item.artist)}/${encodeURIComponent(item.title)}" class="match-link">
-          <img src="${item.image}" class="tilted-img" style="transform: rotate(${angles[i]}deg); opacity: 0; transition: opacity 0.5s ease;" onload="this.style.opacity='1'">
-        </a>`;
-    });
-  });
+  // SCRIPT DU BOUTON MATCH UNIQUEMENT (Le script destructeur de nombres a été retiré !)
+  const btnMatch = document.getElementById('btn-match');
+  if (btnMatch) {
+      btnMatch.addEventListener('click', async () => {
+        const res = await fetch('/api/match');
+        const data = await res.json();
+        const container = document.getElementById('match-results');
+        container.innerHTML = '';
+        data.forEach((item, i) => {
+          const angles = [-10, 5, -5];
+          container.innerHTML += `
+            <a href="/album/${encodeURIComponent(item.artist)}/${encodeURIComponent(item.title)}" class="match-link">
+              <img src="${item.image}" class="tilted-img" style="transform: rotate(${angles[i]}deg); opacity: 0; transition: opacity 0.5s ease;" onload="this.style.opacity='1'">
+            </a>`;
+        });
+      });
+  }
 </script>
 {% endblock %}
