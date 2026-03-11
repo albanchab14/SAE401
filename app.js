@@ -307,9 +307,73 @@ app.get('/album/:artist/:album', async (req, res) => {
     } catch (error) { res.status(500).send("Erreur album"); }
 });
 
-app.get('/notifications', (req, res) => {
-    const notifications = []; 
-    res.render('notifications.njk', { notifications, page: 'notifications' });
+// ROUTE : NOTIFICATIONS
+app.get('/notifications', async (req, res) => {
+    // 1. On sécurise : il faut être connecté pour voir ses notifications !
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+
+    try {
+        // 2. On va chercher les notifications du mec connecté, avec les infos de celui qui a fait l'action
+        const [rawNotifications] = await db.query(`
+            SELECT n.*, u.pseudo as actor_pseudo, u.avatar as actor_avatar 
+            FROM notifications n
+            JOIN users u ON n.actor_id = u.id
+            WHERE n.user_id = ?
+            ORDER BY n.date_creation DESC
+        `, [req.session.user.id]);
+
+        // 3. On "traduit" les données de la BDD pour ton design HTML
+        const notifications = rawNotifications.map(n => {
+            let icon, color, bgColor, actionText;
+
+            // On adapte le style selon le type de notif
+            if (n.type === 'like') {
+                icon = 'heart'; color = '#e12afb'; bgColor = 'rgba(225, 42, 251, 0.1)';
+                actionText = `a aimé votre commentaire sur ${n.reference}`;
+            } else if (n.type === 'follow') {
+                icon = 'user-plus'; color = '#3b82f6'; bgColor = 'rgba(59, 130, 246, 0.1)';
+                actionText = 'a commencé à vous suivre';
+            } else if (n.type === 'rating') {
+                icon = 'star'; color = '#eab308'; bgColor = 'rgba(234, 179, 8, 0.1)';
+                actionText = 'a noté 5 étoiles un album que vous avez aimé';
+            }
+
+            // --- PETITE FONCTION POUR FORMATER LE TEMPS ---
+            const notifDate = new Date(n.date_creation);
+            const now = new Date();
+            const diffInMinutes = Math.floor((now - notifDate) / (1000 * 60));
+            
+            let timeString = '';
+            if (diffInMinutes < 60) {
+                timeString = `Il y a ${diffInMinutes} min`;
+            } else if (diffInMinutes < 1440) {
+                const hours = Math.floor(diffInMinutes / 60);
+                timeString = `Il y a ${hours} heure${hours > 1 ? 's' : ''}`;
+            } else {
+                timeString = 'Hier'; // Ou formater avec la vraie date si tu préfères
+            }
+            // ----------------------------------------------
+
+            return {
+                type: n.type,
+                icon: icon,
+                color: color,
+                bgColor: bgColor,
+                user: n.actor_pseudo,
+                action: actionText,
+                is_read: n.is_read,
+                time: timeString // On envoie le temps joliment formaté !
+            };
+        });
+
+        res.render('notifications.njk', { notifications, page: 'notifications' });
+
+    } catch (error) {
+        console.error("Erreur chargement notifications:", error);
+        res.status(500).send("Erreur serveur.");
+    }
 });
 
 app.get('/api/match', async (req, res) => {
