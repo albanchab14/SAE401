@@ -357,6 +357,7 @@ app.get('/notifications', async (req, res) => {
             // ----------------------------------------------
 
             return {
+                id: n.id,
                 type: n.type,
                 icon: icon,
                 color: color,
@@ -375,6 +376,33 @@ app.get('/notifications', async (req, res) => {
         res.status(500).send("Erreur serveur.");
     }
 });
+
+// Action : Marquer toutes les notifications comme lues
+app.post('/notifications/read-all', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'Non connecté' });
+    try {
+        // On passe is_read à 1 (Vrai) pour cet utilisateur
+        await db.query('UPDATE notifications SET is_read = 1 WHERE user_id = ?', [req.session.user.id]);
+        res.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false });
+    }
+});
+
+// Action : Supprimer une seule notification (Poubelle)
+app.post('/notifications/delete/:id', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: 'Non connecté' });
+    try {
+        // On supprime physiquement la ligne de la table
+        await db.query('DELETE FROM notifications WHERE id = ? AND user_id = ?', [req.params.id, req.session.user.id]);
+        res.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false });
+    }
+});
+
 
 app.get('/api/match', async (req, res) => {
     try {
