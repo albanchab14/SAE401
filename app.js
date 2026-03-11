@@ -340,7 +340,7 @@ app.get('/notifications', async (req, res) => {
             SELECT n.*, u.pseudo as actor_pseudo, u.avatar as actor_avatar 
             FROM notifications n
             JOIN users u ON n.actor_id = u.id
-            WHERE n.user_id = ?
+            WHERE n.user_id = ? AND n.is_read = 0
             ORDER BY n.date_creation DESC
         `, [req.session.user.id]);
 
@@ -397,12 +397,12 @@ app.get('/notifications', async (req, res) => {
     }
 });
 
-// Action : Marquer toutes les notifications comme lues
+// Action : Supprimer TOUTES les notifications
 app.post('/notifications/read-all', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'Non connecté' });
     try {
-        // On passe is_read à 1 (Vrai) pour cet utilisateur
-        await db.query('UPDATE notifications SET is_read = 1 WHERE user_id = ?', [req.session.user.id]);
+        // ✨ ON SUPPRIME TOUT AU LIEU DE JUSTE METTRE A JOUR
+        await db.query('DELETE FROM notifications WHERE user_id = ?', [req.session.user.id]);
         res.json({ success: true });
     } catch (error) {
         console.error(error);
