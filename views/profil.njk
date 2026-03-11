@@ -36,7 +36,6 @@
 
             <div class="edit-form-fields" style="flex: 1; max-width: 400px; display: flex; flex-direction: column; gap: 12px;">
                 <input type="text" id="edit-pseudo" value="{{ user.name }}" class="edit-input-modern" placeholder="Pseudo">
-                
                 <input type="email" id="edit-email" value="{{ user.email }}" class="edit-input-modern" placeholder="Adresse email" oninput="this.value = this.value.replace(/\s/g, '')">
                 
                 <div style="position: relative; width: 100%;">
@@ -53,37 +52,41 @@
             </div>
         </div>
 
-        <div class="profile-stats-modern">
-            <div class="stat-item-modern" style="cursor: pointer;" onclick="switchTab('favorites', document.querySelectorAll('.tab-btn')[1])">
-                <span class="stat-number-modern" style="background: linear-gradient(90deg, #d946ef, #e12afb); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ user.stats.favoris }}</span>
-                <span class="stat-label-modern">FAVORIS</span>
+        <div class="profile-stats-modern" style="display: flex; align-items: center; background: #0c0c0e; border: 1px solid #1a1a1c; border-radius: 16px; padding: 15px 30px; gap: 25px;">
+            <div class="stat-item-modern" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;" onclick="switchTab('favorites', document.querySelectorAll('.tab-btn')[1])">
+                <span class="stat-number-modern" style="font-size: 28px; font-weight: 900; background: linear-gradient(90deg, #d946ef, #e12afb); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ user.stats.favoris | default(0) }}</span>
+                <span class="stat-label-modern" style="font-size: 10px; color: #71717b; font-weight: 800; letter-spacing: 1px;">FAVORIS</span>
             </div>
-            <div style="width: 1px; height: 40px; background: #27272a;"></div>
-            <div class="stat-item-modern" style="cursor: pointer;" onclick="switchTab('comments', document.querySelectorAll('.tab-btn')[0])">
-                <span class="stat-number-modern" style="background: linear-gradient(90deg, #a855f7, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ user.stats.avis }}</span>
-                <span class="stat-label-modern">AVIS</span>
+            
+            <div style="width: 1px; height: 30px; background: #27272a;"></div>
+
+            <div class="stat-item-modern" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;" onclick="switchTab('comments', document.querySelectorAll('.tab-btn')[0])">
+                <span class="stat-number-modern" style="font-size: 28px; font-weight: 900; background: linear-gradient(90deg, #a855f7, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ user.stats.avis | default(0) }}</span>
+                <span class="stat-label-modern" style="font-size: 10px; color: #71717b; font-weight: 800; letter-spacing: 1px;">AVIS</span>
             </div>
-            <div style="width: 1px; height: 40px; background: #27272a;"></div>
-            <div class="stat-item-modern">
-                <span class="stat-number-modern" style="background: linear-gradient(90deg, #f43f5e, #ff2056); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ user.stats.suivis }}</span>
-                <span class="stat-label-modern">SUIVIS</span>
+
+            <div style="width: 1px; height: 30px; background: #27272a;"></div>
+
+            <div class="stat-item-modern" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;" onclick="openFollowersModal('{{ user.id }}')">
+                <span class="stat-number-modern" style="font-size: 28px; font-weight: 900; background: linear-gradient(90deg, #f43f5e, #ff2056); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ user.stats.suivis | default(0) }}</span>
+                <span class="stat-label-modern" style="font-size: 10px; color: #71717b; font-weight: 800; letter-spacing: 1px;">SUIVIS</span>
             </div>
         </div>
     </div>
 
-    <div class="profile-tabs" style="display: flex; gap: 30px; border-bottom: 1px solid #27272a; margin-bottom: 30px;">
-        <button class="tab-btn active" onclick="switchTab('comments', this)">
+    <div class="profile-tabs" style="display: flex; gap: 30px; border-bottom: 1px solid #27272a; margin-bottom: 10px;">
+        <button class="tab-btn active" onclick="switchTab('comments', this)" style="padding-bottom: 10px;">
             <i data-lucide="message-square" style="width: 18px; margin-right: 8px;"></i> Mes Avis
         </button>
-        <button class="tab-btn" onclick="switchTab('favorites', this)">
+        <button class="tab-btn" onclick="switchTab('favorites', this)" style="padding-bottom: 10px;">
             <i data-lucide="heart" style="width: 18px; margin-right: 8px;"></i> Mes Favoris
         </button>
-        <button class="tab-btn" onclick="switchTab('stats', this)">
+        <button class="tab-btn" onclick="switchTab('stats', this)" style="padding-bottom: 10px;">
             <i data-lucide="bar-chart-2" style="width: 18px; margin-right: 8px;"></i> Mon Impact
         </button>
     </div>
 
-    <div id="tab-comments" class="tab-content">
+    <div id="tab-comments" class="tab-content" style="margin: 0 !important; padding: 0 !important;">
         <div class="comments-list">
             {% for comment in comments %}
             <div class="comment-card" style="background: #09090b; border: 1px solid #27272a; padding: 24px; border-radius: 16px; margin-bottom: 20px; display: flex; gap: 20px;">
@@ -93,7 +96,10 @@
                 <div style="flex: 1;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div>
-                            <a href="{{ comment.url }}" style="text-decoration: none;"><h3 style="margin: 0; color: white; font-size: 18px;">{{ comment.title }}</h3></a>
+                            <a href="{{ comment.url }}" style="text-decoration: none; display: flex; align-items: center; gap: 8px; color: white;" onmouseover="this.style.color='#d946ef'" onmouseout="this.style.color='white'">
+                                <h3 style="margin: 0; font-size: 18px; transition: color 0.2s;">{{ comment.title }}</h3>
+                                <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                            </a>
                             <span style="color: #a1a1aa; font-size: 13px;">{{ comment.artist }}</span>
                         </div>
                         <div style="color: #a1a1aa; display: flex; align-items: center; gap: 6px; font-size: 13px;">
@@ -118,19 +124,19 @@
         </div>
     </div>
 
-    <div id="tab-favorites" class="tab-content hidden">
+    <div id="tab-favorites" class="tab-content hidden" style="margin: 0 !important; padding: 0 !important;">
         <div class="favorites-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px;">
             {% for fav in favorites %}
-            <a href="{{ fav.url }}" class="fav-card" style="background: rgba(24,24,27,0.4); border: 1px solid #27272a; border-radius: 16px; padding: 12px; text-decoration: none; color: inherit; transition: transform 0.2s;">
+            <a href="{{ fav.url }}" class="fav-card" style="background: rgba(24,24,27,0.4); border: 1px solid #27272a; border-radius: 16px; padding: 12px; text-decoration: none; color: inherit; transition: transform 0.2s;" onmouseover="this.style.background='rgba(39,39,42,0.6)'; this.style.transform='translateY(-5px)'" onmouseout="this.style.background='rgba(24,24,27,0.4)'; this.style.transform='translateY(0)'">
                 <img src="{{ fav.image }}" style="width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 12px; margin-bottom: 12px;">
-                <h4 style="margin: 0; color: white; font-size: 15px;">{{ fav.title }}</h4>
-                <p style="margin: 5px 0 0 0; color: #a1a1aa; font-size: 13px;">{{ fav.artist }}</p>
+                <h4 style="margin: 0; color: white; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ fav.title }}</h4>
+                <p style="margin: 5px 0 0 0; color: #a1a1aa; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ fav.artist }}</p>
             </a>
             {% endfor %}
         </div>
     </div>
 
-    <div id="tab-stats" class="tab-content hidden">
+    <div id="tab-stats" class="tab-content hidden" style="margin: 0 !important; padding: 0 !important;">
         <div class="impact-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
             <div class="impact-card">
                 <div class="impact-icon" style="color: #d946ef;"><i data-lucide="star"></i></div>
@@ -141,7 +147,6 @@
                 <p>Tu as commenté <strong>{{ impact.musicCommented }} titres</strong>.</p>
             </div>
         </div>
-        
         <div class="did-you-know-banner" style="background: #1b0a2a; border: 1px solid rgba(217, 70, 239, 0.2); border-radius: 20px; padding: 30px; position: relative; overflow: hidden; margin-top: 40px;">
             <h3 style="color: white; font-size: 18px; margin-top: 0; margin-bottom: 12px; font-weight: 800;">Le savais-tu ?</h3>
             <p style="color: #d4d4d8; font-size: 15px; max-width: 85%; position: relative; z-index: 2;">Les membres qui commentent plus de 10 albums par mois ont 3x plus de chances d'apparaître dans les recommandations de la communauté. Continue comme ça !</p>
@@ -164,13 +169,22 @@
     </div>
 </div>
 
+<div id="followers-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(5px);">
+    <div style="background: #18181b; border: 1px solid #27272a; border-radius: 24px; width: 100%; max-width: 450px; padding: 30px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="display: flex; align-items: center; gap: 12px; color: white; margin: 0; font-size: 22px;">
+                <i data-lucide="users" style="color: #d946ef;"></i> Abonnés
+            </h2>
+            <i data-lucide="x" style="cursor: pointer; color: #71717b;" onclick="document.getElementById('followers-modal').style.display='none'"></i>
+        </div>
+        <div id="followers-list" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;"></div>
+    </div>
+</div>
+
 <style>
     .edit-input-modern, .edit-textarea-modern { background: #000; border: 1px solid #27272a; color: white; padding: 12px 16px; border-radius: 12px; font-size: 14px; outline: none; width: 100%; }
     .btn-save-modern { background: #d946ef; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: bold; cursor: pointer; }
     .btn-cancel-modern { background: #27272a; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: bold; cursor: pointer; }
-    .profile-stats-modern { display: flex; align-items: center; background: #0c0c0e; border: 1px solid #1a1a1c; border-radius: 16px; padding: 15px 30px; gap: 25px; }
-    .stat-number-modern { font-size: 28px; font-weight: 900; }
-    .stat-label-modern { font-size: 10px; color: #71717b; font-weight: 800; }
     .btn-action-grey { background: #18181b; border: 1px solid #27272a; color: #d4d4d8; padding: 6px 14px; border-radius: 10px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
     .impact-card { background: rgba(24,24,27,0.4); border: 1px solid #27272a; padding: 20px; border-radius: 16px; display: flex; align-items: center; gap: 15px; }
     .star-edit { color: #71717b; cursor: pointer; }
@@ -238,6 +252,7 @@
 
     let editCommentId = null;
     let editSelectedNote = 0;
+    
     function openEditModal(id, currentNote) {
         editCommentId = id;
         editSelectedNote = currentNote;
@@ -245,6 +260,7 @@
         colorizeEditStars(currentNote);
         document.getElementById('edit-modal').style.display = 'flex';
     }
+    
     function closeEditModal() { document.getElementById('edit-modal').style.display = 'none'; }
 
     const editStars = document.querySelectorAll('.star-edit');
@@ -268,6 +284,50 @@
             body: JSON.stringify({ note: editSelectedNote, commentaire: text })
         });
         if(res.ok) window.location.reload();
+    }
+
+    // GESTION DU POPUP DES ABONNÉS
+    async function openFollowersModal(userId) {
+        const modal = document.getElementById('followers-modal');
+        const list = document.getElementById('followers-list');
+        modal.style.display = 'flex';
+        list.innerHTML = '<p style="color: #71717b; text-align: center;">Chargement...</p>';
+
+        try {
+            const res = await fetch(`/api/user/${userId}/followers`);
+            const followers = await res.json();
+            
+            if (followers.length === 0) {
+                list.innerHTML = '<p style="color: #71717b; text-align: center; padding: 20px;">Aucun abonné.</p>';
+            } else {
+                list.innerHTML = followers.map(f => `
+                    <div id="follower-${f.follower_id}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #27272a;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <img src="${f.avatar || 'https://ui-avatars.com/api/?name='+f.pseudo}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                            <span style="color: white; font-weight: bold;">${f.pseudo}</span>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <a href="/user/${f.pseudo}" style="background: #27272a; color: white; padding: 6px 12px; border-radius: 8px; font-size: 11px; text-decoration: none; font-weight: 800;">VOIR</a>
+                            <button onclick="removeFollower('${f.follower_id}')" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: none; padding: 8px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'">
+                                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            }
+        } catch (e) { list.innerHTML = '<p style="color: #ef4444; text-align: center;">Erreur.</p>'; }
+    }
+
+    async function removeFollower(followerId) {
+        if(!confirm("Supprimer cet abonné ? Il ne vous suivra plus.")) return;
+        try {
+            const res = await fetch(`/api/user/followers/${followerId}`, { method: 'DELETE' });
+            if(res.ok) {
+                document.getElementById(`follower-${followerId}`).remove();
+                setTimeout(() => { window.location.reload(); }, 300);
+            }
+        } catch (e) { alert("Erreur lors de la suppression"); }
     }
 </script>
 {% endblock %}

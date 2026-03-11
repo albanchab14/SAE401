@@ -25,8 +25,9 @@
       </div>
 
       <div>
-        <button class="btn btn-secondary" onclick="copyLink()" style="background: #18181b; border: 1px solid #27272a; padding: 12px 24px; border-radius: 12px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px;">
-            <i data-lucide="share-2" style="width: 18px; height: 18px;"></i> Partager l'album
+        <button id="share-btn" onclick="copyShareLink()" style="background: #27272a; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s;" onmouseover="this.style.background='#3f3f46'" onmouseout="this.style.background='#27272a'">
+            <i data-lucide="share-2" id="share-icon" style="width: 18px; height: 18px;"></i>
+            <span id="share-text">Partager</span>
         </button>
       </div>
 
@@ -89,10 +90,29 @@
 </div>
 
 <script>
-    // Pour copier le lien de la page
-    function copyLink() {
+    function copyShareLink() {
+        // Copie l'URL de la page dans le presse-papier
         navigator.clipboard.writeText(window.location.href).then(() => {
-            alert('Lien de l\'album copié dans le presse-papier !');
+            const btn = document.getElementById('share-btn');
+            const text = document.getElementById('share-text');
+            const icon = document.getElementById('share-icon');
+
+            // --- ANIMATION "COPIÉ" ---
+            btn.style.background = "#22c55e"; // Devient Vert
+            text.innerText = "Copié !";
+            icon.setAttribute('data-lucide', 'check'); // Icone Coche
+            lucide.createIcons();
+
+            // --- RETOUR A LA NORMALE (Après 2 secondes) ---
+            setTimeout(() => {
+                btn.style.background = "#27272a"; // Redevient Gris
+                text.innerText = "Partager";
+                icon.setAttribute('data-lucide', 'share-2'); // Icone Partager
+                lucide.createIcons();
+            }, 2000);
+            
+        }).catch(err => {
+            alert("Impossible de copier le lien.");
         });
     }
 </script>

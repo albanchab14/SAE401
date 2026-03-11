@@ -27,10 +27,9 @@
                 <span style="display: flex; align-items: center; gap: 8px; color: #a1a1aa; font-weight: 600; font-size: 15px;">
                     <i data-lucide="music" style="width:18px; color: #e12afb;"></i> {{ artist.totalAlbums }} albums                </span>
             </div>
-
-            <button onclick="shareArtist()" class="btn-share-figma">
-                <i data-lucide="share-2" style="width: 16px;"></i>
-                Partager
+            <button id="share-btn" onclick="copyShareLink()" style="background: #27272a; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s;" onmouseover="this.style.background='#3f3f46'" onmouseout="this.style.background='#27272a'">
+                <i data-lucide="share-2" id="share-icon" style="width: 18px; height: 18px;"></i>
+                <span id="share-text">Partager</span>
             </button>
         </div>
     </div>
@@ -96,29 +95,31 @@
 
 
 <script>
-function shareArtist() {
-    // On récupère l'URL actuelle
-    const url = window.location.href;
-    
-    // On essaie de copier dans le presse-papier
-    navigator.clipboard.writeText(url).then(() => {
-        // Animation visuelle du bouton pour confirmer la copie
-        const btn = document.querySelector('.btn-share-figma');
-        const originalContent = btn.innerHTML;
-        
-        btn.innerHTML = '<i data-lucide="check" style="width: 16px; color: #4ade80;"></i> Copié !';
-        lucide.createIcons(); // Pour afficher l'icône de validation
-        
-        // On remet le bouton normal après 2 secondes
-        setTimeout(() => {
-            btn.innerHTML = originalContent;
+    function copyShareLink() {
+        // Copie l'URL de la page dans le presse-papier
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            const btn = document.getElementById('share-btn');
+            const text = document.getElementById('share-text');
+            const icon = document.getElementById('share-icon');
+
+            // --- ANIMATION "COPIÉ" ---
+            btn.style.background = "#22c55e"; // Devient Vert
+            text.innerText = "Copié !";
+            icon.setAttribute('data-lucide', 'check'); // Icone Coche
             lucide.createIcons();
-        }, 2000);
-    }).catch(err => {
-        console.error('Erreur lors de la copie : ', err);
-        alert("Lien copié : " + url); // Fallback si le navigateur bloque la copie
-    });
-}
+
+            // --- RETOUR A LA NORMALE (Après 2 secondes) ---
+            setTimeout(() => {
+                btn.style.background = "#27272a"; // Redevient Gris
+                text.innerText = "Partager";
+                icon.setAttribute('data-lucide', 'share-2'); // Icone Partager
+                lucide.createIcons();
+            }, 2000);
+            
+        }).catch(err => {
+            alert("Impossible de copier le lien.");
+        });
+    }
 </script>
 
 {% include "comments.njk" %}

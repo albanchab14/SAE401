@@ -1,0 +1,126 @@
+{% extends "layout.njk" %}
+
+{% block content %}
+<div class="profile-page">
+
+    <a href="javascript:history.back()" class="back-button" style="margin-bottom: 20px; display: inline-flex; align-items: center; gap: 8px; color: #a1a1aa; text-decoration: none; font-weight: bold; transition: 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#a1a1aa'">
+        <i data-lucide="chevron-left"></i> Retour
+    </a>
+
+    <div class="profile-header-card" style="display: flex; justify-content: space-between; align-items: center; gap: 40px; margin-bottom: 30px;">
+        
+        <div style="display: flex; gap: 40px; flex: 1; align-items: center;">
+            <div class="profile-avatar-wrapper">
+                <img src="{{ publicUser.avatar }}" alt="Avatar" class="profile-avatar">
+            </div>
+            <div class="profile-info">
+                <h1 style="font-size: 32px; margin: 0 0 8px 0;">{{ publicUser.name }}</h1>
+                <span class="profile-date" style="color: #71717b; font-size: 14px;">Membre depuis {{ publicUser.joinDate }}</span>
+                <p class="profile-bio" style="color: #d4d4d8; margin: 15px 0; max-width: 500px; line-height: 1.6;">{{ publicUser.bio }}</p>
+            </div>
+        </div>
+
+        <div class="public-profile-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 20px;">
+            <div class="profile-stats-modern" style="display: flex; align-items: center; background: #0c0c0e; border: 1px solid #1a1a1c; border-radius: 16px; padding: 15px 30px;">
+                <div class="stat-item-modern" style="display: flex; flex-direction: column; align-items: center;">
+                    <span class="stat-number-modern" style="font-size: 28px; font-weight: 900; background: linear-gradient(90deg, #d946ef, #e12afb); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ publicUser.stats.favoris | default(0) }}</span>
+                    <span class="stat-label-modern" style="font-size: 10px; color: #71717b; font-weight: 800; letter-spacing: 1px;">FAVORIS</span>
+                </div>
+                <div style="width: 1px; height: 30px; background: #27272a; margin: 0 20px;"></div>
+                <div class="stat-item-modern" style="display: flex; flex-direction: column; align-items: center;">
+                    <span class="stat-number-modern" style="font-size: 28px; font-weight: 900; background: linear-gradient(90deg, #a855f7, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ publicUser.stats.avis | default(0) }}</span>
+                    <span class="stat-label-modern" style="font-size: 10px; color: #71717b; font-weight: 800; letter-spacing: 1px;">AVIS</span>
+                </div>
+                <div style="width: 1px; height: 30px; background: #27272a; margin: 0 20px;"></div>
+                
+                <div class="stat-item-modern" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;" onclick="openFollowersModal('{{ publicUser.id }}')">
+                    <span class="stat-number-modern" style="font-size: 28px; font-weight: 900; background: linear-gradient(90deg, #f43f5e, #ff2056); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ publicUser.stats.suivis | default(0) }}</span>
+                    <span class="stat-label-modern" style="font-size: 10px; color: #71717b; font-weight: 800; letter-spacing: 1px;">SUIVIS</span>
+                </div>
+            </div>
+            
+            <button id="follow-btn" class="btn-subscribe" onclick="toggleFollow('{{ publicUser.id }}')" 
+                style="background: {% if isFollowing %}linear-gradient(90deg, #ef4444 0%, #b91c1c 100%){% else %}linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%){% endif %}; color: white; border: none; padding: 12px 28px; border-radius: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.3s; box-shadow: 0 4px 15px rgba(217, 70, 239, 0.3);">
+                <span id="follow-text">{% if isFollowing %}Se désabonner{% else %}S'abonner{% endif %}</span> <i data-lucide="arrow-right" style="width: 18px;"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="profile-tabs" style="display: flex; gap: 30px; border-bottom: 1px solid #27272a; margin-bottom: 10px;">
+        <button class="tab-btn active" style="padding-bottom: 10px; background: none; border: none; color: white; cursor: default; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #d946ef; margin-bottom: -1px; font-weight: bold;">
+            <i data-lucide="heart" style="width: 18px; color: #d946ef;"></i> Ses Favoris
+        </button>
+    </div>
+
+    <div id="tab-favorites" class="tab-content" style="margin: 0 !important; padding: 0 !important;">
+        <div class="favorites-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px;">
+            {% for fav in favorites %}
+            <a href="{{ fav.url }}" class="fav-card" style="background: rgba(24,24,27,0.4); border: 1px solid #27272a; border-radius: 16px; padding: 12px; text-decoration: none; color: inherit; transition: transform 0.2s;" onmouseover="this.style.background='rgba(39,39,42,0.6)'; this.style.transform='translateY(-5px)'" onmouseout="this.style.background='rgba(24,24,27,0.4)'; this.style.transform='translateY(0)'">
+                <img src="{{ fav.image }}" alt="{{ fav.title }}" style="width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 12px; margin-bottom: 12px;">
+                <h4 style="margin: 0; color: white; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ fav.title }}</h4>
+                <p style="margin: 5px 0 0 0; color: #a1a1aa; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ fav.artist }}</p>
+            </a>
+            {% else %}
+            <p style="color: #71717b; grid-column: 1 / -1; text-align: center; padding: 20px 0;">Aucun favori pour le moment.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<div id="followers-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(5px);">
+    <div style="background: #18181b; border: 1px solid #27272a; border-radius: 24px; width: 100%; max-width: 450px; padding: 30px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="display: flex; align-items: center; gap: 12px; color: white; margin: 0; font-size: 22px;">
+                <i data-lucide="users" style="color: #d946ef;"></i> Abonnés
+            </h2>
+            <i data-lucide="x" style="cursor: pointer; color: #71717b;" onclick="document.getElementById('followers-modal').style.display='none'"></i>
+        </div>
+        <div id="followers-list" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;"></div>
+    </div>
+</div>
+
+<script>
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    async function toggleFollow(userId) {
+        const res = await fetch(`/api/user/${userId}/follow`, { method: 'POST' });
+        const data = await res.json();
+        const btn = document.getElementById('follow-btn');
+        const text = document.getElementById('follow-text');
+        
+        if (data.isFollowing) {
+            btn.style.background = "linear-gradient(90deg, #ef4444 0%, #b91c1c 100%)";
+            text.innerText = "Se désabonner";
+        } else {
+            btn.style.background = "linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%)";
+            text.innerText = "S'abonner";
+        }
+        setTimeout(() => { window.location.reload(); }, 300);
+    }
+
+    async function openFollowersModal(userId) {
+        const modal = document.getElementById('followers-modal');
+        const list = document.getElementById('followers-list');
+        modal.style.display = 'flex';
+        list.innerHTML = '<p style="color: #71717b; text-align: center;">Chargement...</p>';
+        try {
+            const res = await fetch(`/api/user/${userId}/followers`);
+            const followers = await res.json();
+            if (followers.length === 0) {
+                list.innerHTML = '<p style="color: #71717b; text-align: center; padding: 20px;">Aucun abonné.</p>';
+            } else {
+                list.innerHTML = followers.map(f => `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #27272a;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <img src="${f.avatar || 'https://ui-avatars.com/api/?name='+f.pseudo}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                            <span style="color: white; font-weight: bold;">${f.pseudo}</span>
+                        </div>
+                        <a href="/user/${f.pseudo}" style="background: #27272a; color: white; padding: 6px 12px; border-radius: 8px; font-size: 11px; text-decoration: none; font-weight: 800;">VOIR</a>
+                    </div>
+                `).join('');
+            }
+        } catch (e) { list.innerHTML = '<p style="color: #ef4444; text-align: center;">Erreur lors du chargement.</p>'; }
+    }
+</script>
+{% endblock %}

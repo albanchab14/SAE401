@@ -326,7 +326,6 @@ body {
   justify-content: center;
   align-items: center;
   margin: 0 auto 20px auto;
-  / L'ombre qui fait l'effet de lumière (glow) /
   box-shadow: 0 0 25px rgba(217, 70, 239, 0.5); 
 }
 
@@ -345,13 +344,12 @@ body {
   gap: 8px;
   transition: 0.3s;
   margin-top: 10px;
-  / L'ombre sous le bouton /
   box-shadow: 0 4px 15px rgba(217, 70, 239, 0.4);
 }
 
 .btn-submit-purple:hover {
   box-shadow: 0 6px 25px rgba(217, 70, 239, 0.7);
-  transform: translateY(-2px); / Petit effet de soulèvement au survol */
+  transform: translateY(-2px);
 }
 
 
@@ -925,35 +923,95 @@ body {
 }
 
 
-/* ========================================= /
-/ PAGE PROFIL PUBLIC                        /
-/ ========================================= */
-
-.public-profile-right {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    align-items: stretch;
-}
-
-.btn-subscribe {
-    background: linear-gradient(to right, #d946ef, #8b5cf6);
+/* Bouton S'abonner avec dégradé */
+.btn-subscribe-gradient {
+    background: linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%);
     color: white;
     border: none;
-    border-radius: 12px;
-    padding: 12px;
-    font-weight: bold;
-    font-size: 0.95rem;
+    padding: 12px 30px;
+    border-radius: 20px;
+    font-weight: 800;
     cursor: pointer;
     display: flex;
-    justify-content: center;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    transition: transform 0.2s, box-shadow 0.2s;
     box-shadow: 0 4px 15px rgba(217, 70, 239, 0.4);
-    transition: 0.2s;
 }
 
-.btn-subscribe:hover {
+.btn-subscribe-gradient:hover {
+    transform: scale(1.05);
     box-shadow: 0 6px 20px rgba(217, 70, 239, 0.6);
-    transform: translateY(-2px);
 }
+
+/* Modal / Popup Abonnés */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: none; /* Caché par défaut */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 500px;
+    padding: 30px;
+    position: relative;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    color: white;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.user-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-avatar-small {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.btn-follow-small {
+    background: #27272a;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+</style>
