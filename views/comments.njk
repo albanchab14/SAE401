@@ -1,0 +1,225 @@
+<div class="comments-section" style="margin-top: 60px; max-width: 800px;">
+    <h3 style="font-size: 24px; color: white; margin-bottom: 24px; font-weight: 800;">Avis et Commentaires</h3>
+
+    <div class="add-comment-box" style="background: rgba(24,24,27,0.4); border: 1px solid #27272a; padding: 24px; border-radius: 16px; margin-bottom: 40px;">
+        {% if user %}
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;" id="star-rating">
+                <div class="star-input" data-val="1"><i data-lucide="star"></i></div>
+                <div class="star-input" data-val="2"><i data-lucide="star"></i></div>
+                <div class="star-input" data-val="3"><i data-lucide="star"></i></div>
+                <div class="star-input" data-val="4"><i data-lucide="star"></i></div>
+                <div class="star-input" data-val="5"><i data-lucide="star"></i></div>
+            </div>
+            <textarea id="comment-text" placeholder="Partagez votre avis sur cet élément..." style="width: 100%; background: #09090b; border: 1px solid #3f3f46; border-radius: 12px; padding: 16px; color: white; min-height: 100px; resize: none; margin-bottom: 16px; outline: none;"></textarea>
+            <button onclick="submitComment()" style="background: linear-gradient(to right, #d946ef, #8b5cf6); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s;">Publier l'avis</button>
+        {% else %}
+            <p style="color: #a1a1aa; margin: 0;">Vous devez être <a href="/login" style="color: #d946ef; text-decoration: none;">connecté</a> pour laisser un avis.</p>
+        {% endif %}
+    </div>
+
+    <div class="comments-list" style="display: flex; flex-direction: column; gap: 24px;">
+        {% for c in comments %}
+        <div class="comment-item" style="background: #18181b; border: 1px solid #27272a; padding: 20px; border-radius: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="{{ c.avatar if c.avatar else 'https://ui-avatars.com/api/?name=' + c.pseudo + '&background=27272a&color=fff' }}" style="width: 40px; height: 40px; border-radius: 50%;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <strong style="color: white;">{{ c.pseudo }}</strong>
+                            <span style="color: #71717b; font-size: 12px;">{{ c.time_ago }}</span>
+                        </div>
+                        <div style="display: flex; color: #d946ef; width: 14px; margin-top: 4px;">
+                            {% for i in range(0, 5) %}
+                                {% if i < c.note %}
+                                    <i data-lucide="star" style="fill: #d946ef; color: #d946ef; width: 14px; height: 14px;"></i>
+                                {% else %}
+                                    <i data-lucide="star" style="color: #3f3f46; width: 14px; height: 14px;"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px; color: #71717b; align-items: center;">
+                    {% if user and user.id == c.user_id %}
+                        <button onclick="openEditModal({{ c.id }}, {{ c.note }})" style="background: none; border: none; color: inherit; cursor: pointer;" title="Modifier mon avis"><i data-lucide="edit-2" style="width: 16px; height: 16px;"></i></button>
+                        <button onclick="deleteOwnComment({{ c.id }})" style="background: none; border: none; color: #ff2056; cursor: pointer;" title="Supprimer mon avis"><i data-lucide="trash-2" style="width: 16px; height: 16px;"></i></button>
+                    {% endif %}
+
+                    <button onclick="likeComment({{ c.id }}, this)" style="background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-left: 10px;">
+                        <i data-lucide="heart" class="{% if c.user_liked %}liked{% endif %}" style="width: 18px; height: 18px; {% if c.user_liked %}fill: #ff2056; color: #ff2056;{% endif %}"></i> 
+                        <span class="like-count">{{ c.total_likes }}</span>
+                    </button>
+                    <button onclick="openReportModal({{ c.id }}, '{{ c.pseudo }}')" style="background: none; border: none; color: inherit; cursor: pointer;" title="Signaler ce commentaire">
+                        <i data-lucide="flag" style="width: 18px; height: 18px;"></i>
+                    </button>
+                </div>
+            </div>
+            <p id="comment-content-{{ c.id }}" style="color: #d4d4d8; line-height: 1.6; margin: 0;">{{ c.commentaire }}</p>
+        </div>
+        {% else %}
+        <p style="color: #71717b;">Aucun avis pour le moment. Soyez le premier !</p>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="edit-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 9999;">
+    <div style="background: #18181b; border: 1px solid #3f3f46; border-radius: 16px; width: 450px; padding: 24px;">
+        <h3 style="color: white; margin-top: 0;">Modifier mon avis</h3>
+        
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;" id="edit-star-rating">
+            <div class="star-edit" data-val="1"><i data-lucide="star"></i></div>
+            <div class="star-edit" data-val="2"><i data-lucide="star"></i></div>
+            <div class="star-edit" data-val="3"><i data-lucide="star"></i></div>
+            <div class="star-edit" data-val="4"><i data-lucide="star"></i></div>
+            <div class="star-edit" data-val="5"><i data-lucide="star"></i></div>
+        </div>
+
+        <textarea id="edit-comment-text" style="width: 100%; background: #09090b; border: 1px solid #3f3f46; border-radius: 12px; padding: 16px; color: white; min-height: 100px; resize: none; margin-bottom: 24px; outline: none;"></textarea>
+
+        <div style="display: flex; gap: 12px;">
+            <button onclick="closeEditModal()" style="flex: 1; background: #09090b; border: 1px solid #3f3f46; color: white; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer;">Annuler</button>
+            <button onclick="submitEditComment()" style="flex: 1; background: #2b7fff; border: none; color: white; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer;">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<div id="report-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 9999;">
+    <div class="report-box" style="background: #18181b; border: 1px solid #3f3f46; border-radius: 16px; width: 450px; padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+            <div style="display: flex; gap: 16px; align-items: center;">
+                <div style="background: rgba(190, 18, 60, 0.1); color: #f43f5e; width: 44px; height: 44px; border-radius: 12px; display: flex; justify-content: center; align-items: center;"><i data-lucide="flag"></i></div>
+                <div>
+                    <h3 style="color: white; margin: 0 0 4px 0; font-size: 18px;">Signaler un commentaire</h3>
+                    <p id="report-subtitle" style="color: #71717b; margin: 0; font-size: 13px;">Commentaire de ...</p>
+                </div>
+            </div>
+            <i data-lucide="x" style="color: #a1a1aa; cursor: pointer;" onclick="closeReportModal()"></i>
+        </div>
+        <div style="background: rgba(217, 119, 6, 0.1); border: 1px solid #b45309; border-radius: 10px; padding: 16px; display: flex; gap: 12px; margin-bottom: 24px;">
+            <i data-lucide="alert-circle" style="color: #f59e0b; flex-shrink: 0;"></i>
+            <p style="color: #fcd34d; font-size: 13px; line-height: 1.5; margin: 0;">Votre signalement sera examiné par notre équipe de modération. Les abus répétés peuvent entraîner des sanctions.</p>
+        </div>
+        <h4 style="color: white; font-size: 14px; margin-bottom: 12px;">Motif du signalement *</h4>
+        <div class="report-options" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
+            <label class="report-option"><input type="radio" name="report_reason" value="Spam / publicité"> Spam / publicité</label>
+            <label class="report-option"><input type="radio" name="report_reason" value="Harcèlement ou intimidation"> Harcèlement ou intimidation</label>
+            <label class="report-option"><input type="radio" name="report_reason" value="Langage offensant"> Langage offensant</label>
+            <label class="report-option"><input type="radio" name="report_reason" value="Violence ou contenu dangereux"> Violence ou contenu dangereux</label>
+            <label class="report-option"><input type="radio" name="report_reason" value="Contenu inapproprié"> Contenu inapproprié</label>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button onclick="closeReportModal()" style="flex: 1; background: #09090b; border: 1px solid #3f3f46; color: white; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer;">Annuler</button>
+            <button onclick="submitReport()" style="flex: 1; background: #9f1239; border: none; color: white; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s;">Envoyer</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .star-input, .star-edit { color: #71717b; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; }
+    .star-input svg, .star-edit svg { width: 24px; height: 24px; transition: 0.2s; pointer-events: none; }
+    .report-option { background: #09090b; border: 1px solid #27272a; padding: 14px 16px; border-radius: 10px; color: #d4d4d8; font-size: 14px; cursor: pointer; transition: 0.2s; }
+    .report-option:hover { background: #18181b; }
+    .report-option input[type="radio"] { display: none; }
+    .report-option:has(input:checked) { border-color: #9f1239; background: rgba(159, 18, 57, 0.1); color: white; font-weight: bold; }
+</style>
+
+<script>
+    const currentItemId = "{{ itemId }}";
+    const currentItemType = "{{ itemType }}";
+    let selectedNote = 0;
+    
+    // GESTION MAGIQUE DES ÉTOILES (Formulaire Principal)
+    const starContainer = document.getElementById('star-rating');
+    if (starContainer) {
+        const stars = starContainer.querySelectorAll('.star-input');
+        function colorizeStars(count) {
+            stars.forEach((s) => {
+                const val = parseInt(s.getAttribute('data-val'));
+                const svg = s.querySelector('svg');
+                if (svg) {
+                    if (val <= count) { svg.style.fill = '#d946ef'; svg.style.color = '#d946ef'; svg.style.transform = 'scale(1.1)'; } 
+                    else { svg.style.fill = 'none'; svg.style.color = '#71717b'; svg.style.transform = 'scale(1)'; }
+                }
+            });
+        }
+        starContainer.addEventListener('mouseover', (e) => { const h = e.target.closest('.star-input'); if (h) colorizeStars(parseInt(h.getAttribute('data-val'))); });
+        starContainer.addEventListener('mouseout', () => colorizeStars(selectedNote));
+        starContainer.addEventListener('click', (e) => { const c = e.target.closest('.star-input'); if (c) { selectedNote = parseInt(c.getAttribute('data-val')); colorizeStars(selectedNote); } });
+    }
+
+    async function submitComment() {
+        const text = document.getElementById('comment-text').value;
+        if(selectedNote === 0 || text.trim() === "") return alert("Veuillez donner une note (étoiles) et écrire un commentaire.");
+        const res = await fetch('/api/comments', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ item_id: currentItemId, item_type: currentItemType, note: selectedNote, commentaire: text }) });
+        if(res.ok) window.location.reload(); else alert("Erreur.");
+    }
+
+    // ACTIONS SUR SES PROPRES COMMENTAIRES
+    async function deleteOwnComment(id) {
+        if(!confirm("Supprimer définitivement cet avis ?")) return;
+        const res = await fetch(`/api/comments/own/${id}`, { method: 'DELETE' });
+        if(res.ok) window.location.reload();
+    }
+
+    let editCommentId = null;
+    let editSelectedNote = 0;
+    function openEditModal(id, currentNote) {
+        editCommentId = id;
+        editSelectedNote = currentNote;
+        document.getElementById('edit-comment-text').value = document.getElementById(`comment-content-${id}`).innerText;
+        colorizeEditStars(currentNote);
+        document.getElementById('edit-modal').style.display = 'flex';
+    }
+    function closeEditModal() { document.getElementById('edit-modal').style.display = 'none'; }
+    
+    // Étoiles dans le Modal d'édition
+    const editStarContainer = document.getElementById('edit-star-rating');
+    const editStars = editStarContainer.querySelectorAll('.star-edit');
+    function colorizeEditStars(count) {
+        editStars.forEach((s) => {
+            const val = parseInt(s.getAttribute('data-val'));
+            const svg = s.querySelector('svg');
+            if (val <= count) { svg.style.fill = '#2b7fff'; svg.style.color = '#2b7fff'; } 
+            else { svg.style.fill = 'none'; svg.style.color = '#71717b'; }
+        });
+    }
+    editStarContainer.addEventListener('mouseover', (e) => { const h = e.target.closest('.star-edit'); if (h) colorizeEditStars(parseInt(h.getAttribute('data-val'))); });
+    editStarContainer.addEventListener('mouseout', () => colorizeEditStars(editSelectedNote));
+    editStarContainer.addEventListener('click', (e) => { const c = e.target.closest('.star-edit'); if (c) { editSelectedNote = parseInt(c.getAttribute('data-val')); colorizeEditStars(editSelectedNote); } });
+
+    async function submitEditComment() {
+        const text = document.getElementById('edit-comment-text').value;
+        if(editSelectedNote === 0 || text.trim() === "") return alert("Veuillez donner une note.");
+        const res = await fetch(`/api/comments/own/${editCommentId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ note: editSelectedNote, commentaire: text }) });
+        if(res.ok) window.location.reload();
+    }
+
+    // AUTRES (Like, Signaler)
+    async function likeComment(id, btn) {
+        const res = await fetch(`/api/comments/${id}/like`, { method: 'POST' });
+        if(res.ok) {
+            const data = await res.json();
+            const icon = btn.querySelector('svg');
+            const countSpan = btn.querySelector('.like-count');
+            let count = parseInt(countSpan.innerText);
+            if(data.liked) { icon.style.fill = '#ff2056'; icon.style.color = '#ff2056'; countSpan.innerText = count + 1; } 
+            else { icon.style.fill = 'none'; icon.style.color = 'inherit'; countSpan.innerText = count - 1; }
+        } else { alert("Connectez-vous pour aimer."); }
+    }
+
+    let commentToReport = null;
+    function openReportModal(id, pseudo) {
+        commentToReport = id;
+        document.getElementById('report-subtitle').innerText = `Commentaire de ${pseudo}`;
+        document.getElementById('report-modal').style.display = 'flex';
+    }
+    function closeReportModal() { document.getElementById('report-modal').style.display = 'none'; }
+    async function submitReport() {
+        const reason = document.querySelector('input[name="report_reason"]:checked');
+        if(!reason) return alert("Veuillez sélectionner un motif.");
+        const res = await fetch(`/api/comments/${commentToReport}/report`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ reason: reason.value }) });
+        if(res.ok) { alert("Signalement envoyé avec succès !"); closeReportModal(); } 
+        else { alert("Erreur."); }
+    }
+</script>

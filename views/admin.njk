@@ -93,7 +93,11 @@
                 <tr id="report-row-{{ r.comment_id }}">
                     <td style="color: #71717b;">#{{ r.comment_id }}</td>
                     <td style="color: #f4f4f5;"><strong>{{ r.pseudo }}</strong></td>
-                    <td style="color: #a1a1aa; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ r.comment }}">{{ r.comment }}</td>
+                    <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ r.comment }}">
+                        <a href="{{ r.url }}" target="_blank" style="color: #d946ef; text-decoration: none; display: block; width: 100%;">
+                            {{ r.comment }}
+                        </a>
+                    </td>                   
                     <td style="color: #d4d4d8;">{{ r.reason }}</td>
                     <td><span class="badge badge-warning">{{ r.count }}</span></td>
                     <td style="text-align: right;">

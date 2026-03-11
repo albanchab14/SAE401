@@ -20,11 +20,9 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// MIDDLEWARE : SÉCURITÉ MAINTENANCE (Lié à la table site_settings)
+// MIDDLEWARE MAINTENANCE
 app.use(async (req, res, next) => {
-    if (req.path.startsWith('/css') || req.path.startsWith('/images') || req.path.startsWith('/api')) {
-        return next();
-    }
+    if (req.path.startsWith('/css') || req.path.startsWith('/images') || req.path.startsWith('/api')) return next();
     try {
         const [settings] = await db.query('SELECT is_maintenance, maintenance_message FROM site_settings WHERE id = 1');
         const isMaintenance = settings.length > 0 ? settings[0].is_maintenance : false;
@@ -33,12 +31,8 @@ app.use(async (req, res, next) => {
         if (isMaintenance) {
             const isAdmin = req.session.user && req.session.user.role === 'admin';
             if (!isAdmin) {
-                if (['/login', '/connexion', '/register', '/inscription'].includes(req.path)) {
-                    return next();
-                }
-                if (req.path === '/admin') {
-                    return res.redirect('/login');
-                }
+                if (['/login', '/connexion', '/register', '/inscription'].includes(req.path)) return next();
+                if (req.path === '/admin') return res.redirect('/login');
                 return res.status(503).send(`
                     <body style='background:#09090b; color:white; font-family:sans-serif; text-align:center; padding-top:100px;'>
                         <h1 style='font-size: 2rem; margin-bottom: 10px;'>🛠 Site en maintenance</h1>
@@ -58,7 +52,7 @@ app.use((req, res, next) => {
 
 function requireAdmin(req, res, next) {
     if (!req.session.user || req.session.user.role !== 'admin') {
-        if (req.path.startsWith('/api/')) return res.status(403).json({ error: "Accès refusé. Réservé aux administrateurs." });
+        if (req.path.startsWith('/api/')) return res.status(403).json({ error: "Accès refusé." });
         return res.redirect('/login');
     }
     next();
@@ -76,14 +70,47 @@ async function getRealArtistImage(artistName) {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(artistName)}&background=d946ef&color=fff&size=500`;
 }
 
+// FONCTION : Calculer "Il y a X temps"
+function timeAgo(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return "Il y a " + Math.floor(interval) + " an" + (Math.floor(interval) > 1 ? "s" : "");
+    interval = seconds / 2592000;
+    if (interval > 1) return "Il y a " + Math.floor(interval) + " mois";
+    interval = seconds / 86400;
+    if (interval > 1) return "Il y a " + Math.floor(interval) + " jour" + (Math.floor(interval) > 1 ? "s" : "");
+    interval = seconds / 3600;
+    if (interval > 1) return "Il y a " + Math.floor(interval) + " h";
+    interval = seconds / 60;
+    if (interval > 1) return "Il y a " + Math.floor(interval) + " min";
+    return "À l'instant";
+}
+
+async function getItemComments(itemId, itemType, userId) {
+    try {
+        const [comments] = await db.query(`
+            SELECT c.*, u.pseudo, u.avatar, 
+                   (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as total_likes,
+                   (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id AND user_id = ?) as user_liked
+            FROM commentaires c 
+            JOIN users u ON c.user_id = u.id 
+            WHERE c.music_item_id = ? AND c.item_type = ? 
+            ORDER BY c.date_commentaire DESC
+        `, [userId || 0, itemId, itemType]);
+        
+        // Appliquer le formatage de date
+        comments.forEach(c => c.time_ago = timeAgo(c.date_commentaire));
+        return comments;
+    } catch (e) { return []; }
+}
+
 // ==========================================
-// ACCUEIL (Artistes à la une & Bannière)
+// ROUTES PUBLIQUES
 // ==========================================
+
 app.get('/', async (req, res) => {
     try {
         const API_KEY = process.env.LASTFM_API_KEY;
-        
-        // Récupération des 6 artistes depuis la BDD
         const [dbArtists] = await db.query("SELECT * FROM featured_artists ORDER BY rang ASC LIMIT 6");
         let topArtists = [];
         
@@ -98,16 +125,12 @@ app.get('/', async (req, res) => {
             } catch(e) {}
             
             topArtists.push({
-                name: a.api_artist_id,
-                listeners: listeners,
-                image: await getRealArtistImage(a.api_artist_id),
-                accroche: a.accroche || `Découvrez l'univers de ${a.api_artist_id}, l'un des artistes les plus écoutés du moment sur BPM.`
+                name: a.api_artist_id, listeners: listeners, image: await getRealArtistImage(a.api_artist_id),
+                accroche: a.accroche || `Découvrez l'univers de ${a.api_artist_id}.`
             });
         }
 
-        // L'artiste en position 1 devient le "Héro" de la bannière !
         const heroArtist = topArtists.length > 0 ? topArtists[0] : null;
-
         const randomPage = Math.floor(Math.random() * 50) + 1;
         const respMatch = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=rj&api_key=${API_KEY}&format=json&limit=10&page=${randomPage}`);
         const initialMatch = respMatch.data.topalbums.album.sort(() => 0.5 - Math.random()).slice(0, 3).map(alb => ({
@@ -118,7 +141,6 @@ app.get('/', async (req, res) => {
     } catch (e) { res.status(500).send("Erreur Accueil"); }
 });
 
-// AUTRES ROUTES (Identiques)
 app.get('/search', async (req, res) => {
     try {
         const { q, type, tag, years } = req.query;
@@ -182,7 +204,11 @@ app.get('/details/:name', async (req, res) => {
             listeners: parseInt(t.listeners).toLocaleString('fr-FR'),
             wiki: t.wiki?.summary || "Aucune description.", tags: t.toptags?.tag?.slice(0, 5) || [], year: "2024"
         };
-        res.render('details.njk', { track: trackData });
+
+        const userId = req.session.user ? req.session.user.id : 0;
+        const comments = await getItemComments(trackName, 'track', userId);
+
+        res.render('details.njk', { track: trackData, comments, itemId: trackName, itemType: 'track' });
     } catch (e) { res.status(500).send("Erreur détails"); }
 });
 
@@ -214,7 +240,6 @@ app.get('/artiste/:name', async (req, res) => {
                     let titresUniques = new Set();
                     let albumsPurifies = [];
                     const motsInterdits = ['live', 'remix', 'tour', 'essential', 'hits', 'best of', 'collection', 'anthology', 'number ones', 'remaster', 'edition', 'deluxe', 'greatest', 'ultimate', 'trilogy'];
-                    
                     vraisAlbums.forEach(alb => {
                         let titreBasique = alb.title.toLowerCase();
                         let contientMotInterdit = motsInterdits.some(mot => titreBasique.includes(mot));
@@ -238,7 +263,11 @@ app.get('/artiste/:name', async (req, res) => {
             albums: albumsResp.data.topalbums.album.map(alb => ({ title: alb.name, image: alb.image[3]['#text'] || 'https://via.placeholder.com/150' })),
             topTracks: tracksResp.data.toptracks.track.map((t, index) => ({ rank: index + 1, title: t.name, listeners: (parseInt(t.listeners) / 1000000).toFixed(1) + "M" }))
         };
-        res.render('artist.njk', { artist: artistData });
+
+        const userId = req.session.user ? req.session.user.id : 0;
+        const comments = await getItemComments(artistName, 'artist', userId);
+
+        res.render('artist.njk', { artist: artistData, comments, itemId: artistName, itemType: 'artist' });
     } catch (error) { res.status(500).send("Artiste introuvable"); }
 });
 
@@ -268,13 +297,13 @@ app.get('/album/:artist/:album', async (req, res) => {
             year: alb.wiki ? alb.wiki.published.split(',')[0].split(' ').pop() : "2024",
             trackCount: tracks.length, totalDuration: `${totalHours > 0 ? totalHours + 'h ' : ''}${totalMins}min`, tracks: tracks
         };
-        res.render('album.njk', { album: albumData });
-    } catch (error) { res.status(500).send("Erreur album"); }
-});
 
-app.get('/notifications', (req, res) => {
-    const notifications = []; 
-    res.render('notifications.njk', { notifications, page: 'notifications' });
+        const itemId = `${artist}::${album}`; // Utilisation d'un séparateur fort
+        const userId = req.session.user ? req.session.user.id : 0;
+        const comments = await getItemComments(itemId, 'album', userId);
+
+        res.render('album.njk', { album: albumData, comments, itemId: itemId, itemType: 'album' });
+    } catch (error) { res.status(500).send("Erreur album"); }
 });
 
 app.get('/api/match', async (req, res) => {
@@ -285,7 +314,6 @@ app.get('/api/match', async (req, res) => {
         const albums = response.data.topalbums.album.sort(() => 0.5 - Math.random());
         const result = [];
         const seenArtists = new Set();
-        
         for (let alb of albums) {
             let img = alb.image[3]['#text'];
             if (img && !img.includes('2a96cbd8') && !seenArtists.has(alb.artist.name)) {
@@ -303,24 +331,82 @@ app.get('/api/suggest', async (req, res) => {
         const { q } = req.query;
         const API_KEY = process.env.LASTFM_API_KEY;
         if (!q || q.length < 2) return res.json([]);
-
         const [artResp, albResp] = await Promise.all([
             axios.get(`https://api.deezer.com/search/artist?q=${encodeURIComponent(q)}&limit=4`),
             axios.get(`https://ws.audioscrobbler.com/2.0/?method=album.search&album=${encodeURIComponent(q)}&api_key=${API_KEY}&format=json&limit=4`)
         ]);
-
         let deezerArtists = artResp.data.data || [];
         deezerArtists = deezerArtists.filter(a => !((a.name.includes('&') || a.name.includes(' feat')) && !q.includes('&')));
         const artists = deezerArtists.slice(0, 4).map(a => ({ title: a.name, artist: "Artiste", type: "artiste" }));
         const albums = albResp.data.results.albummatches.album.map(a => ({ title: a.name, artist: a.artist, type: "album" }));
-        
         res.json([...artists, ...albums]);
     } catch (e) { res.json([]); }
 });
 
 // ==========================================
-// AUTHENTIFICATION
+// 3. API : SYSTÈME DE COMMENTAIRES 
 // ==========================================
+
+app.post('/api/comments', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Connectez-vous pour commenter." });
+    try {
+        const { item_id, item_type, note, commentaire } = req.body;
+        await db.query("INSERT INTO commentaires (user_id, music_item_id, item_type, note, commentaire) VALUES (?, ?, ?, ?, ?)", 
+        [req.session.user.id, item_id, item_type, note, commentaire]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur lors de l'envoi." }); }
+});
+
+app.post('/api/comments/:id/like', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
+    try {
+        const commentId = req.params.id;
+        const userId = req.session.user.id;
+        const [exist] = await db.query("SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
+        if (exist.length > 0) {
+            await db.query("DELETE FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
+            res.json({ liked: false });
+        } else {
+            await db.query("INSERT INTO comment_likes (user_id, comment_id) VALUES (?, ?)", [userId, commentId]);
+            res.json({ liked: true });
+        }
+    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+});
+
+app.post('/api/comments/:id/report', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
+    try {
+        const { reason } = req.body;
+        await db.query("INSERT INTO reports_commentaire (reporter_id, commentaire_id, reason) VALUES (?, ?, ?)", 
+        [req.session.user.id, req.params.id, reason]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+});
+
+// NOUVEAU : Supprimer SON PROPRE commentaire
+app.delete('/api/comments/own/:id', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
+    try {
+        await db.query("DELETE FROM commentaires WHERE id = ? AND user_id = ?", [req.params.id, req.session.user.id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+});
+
+// NOUVEAU : Modifier SON PROPRE commentaire
+app.put('/api/comments/own/:id', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
+    try {
+        const { note, commentaire } = req.body;
+        await db.query("UPDATE commentaires SET note = ?, commentaire = ?, date_commentaire = NOW() WHERE id = ? AND user_id = ?", 
+        [note, commentaire, req.params.id, req.session.user.id]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+});
+
+// ==========================================
+// 4. AUTHENTIFICATION
+// ==========================================
+
 app.get('/login', (req, res) => res.render('login.njk', { page: 'login' }));
 app.get('/register', (req, res) => res.render('register.njk', { page: 'register' }));
 app.get('/connexion', (req, res) => res.redirect('/login'));
@@ -331,19 +417,14 @@ app.post('/login', async (req, res) => {
     try {
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
         if (users.length === 0) return res.render('login.njk', { page: 'login', error: "Email introuvable." });
-        
         const user = users[0];
         
         if (password === user.password) {
             const [settings] = await db.query('SELECT is_maintenance FROM site_settings WHERE id = 1');
             const isMaintenance = settings.length > 0 ? settings[0].is_maintenance : false;
 
-            if (isMaintenance && user.role !== 'admin') {
-                return res.render('login.njk', { page: 'login', error: "🛠 Le site est en maintenance. Seuls les administrateurs peuvent se connecter." });
-            }
-            if (user.is_banned == 1) {
-                return res.render('login.njk', { page: 'login', error: "🚨 Votre compte a été banni par un administrateur." });
-            }
+            if (isMaintenance && user.role !== 'admin') return res.render('login.njk', { page: 'login', error: "🛠 Le site est en maintenance. Seuls les administrateurs peuvent se connecter." });
+            if (user.is_banned == 1) return res.render('login.njk', { page: 'login', error: "🚨 Votre compte a été banni." });
 
             req.session.user = { id: user.id, pseudo: user.pseudo, role: user.role, avatar: user.avatar };
             res.redirect(user.role === 'admin' ? '/admin' : '/');
@@ -364,8 +445,9 @@ app.get('/logout', (req, res) => {
 
 
 // ==========================================
-// DASHBOARD ADMIN (SÉCURISÉ)
+// 5. LE DASHBOARD ADMIN (SÉCURISÉ)
 // ==========================================
+
 app.get('/admin', requireAdmin, async (req, res) => {
     try {
         const API_KEY = process.env.LASTFM_API_KEY;
@@ -376,13 +458,24 @@ app.get('/admin', requireAdmin, async (req, res) => {
         const [users] = await db.query("SELECT id, pseudo, email, role, is_banned FROM users ORDER BY id DESC LIMIT 50");
         
         const [reports] = await db.query(`
-            SELECT c.id as comment_id, u.pseudo, c.commentaire as comment, rc.reason, COUNT(rc.id) as count 
+            SELECT c.id as comment_id, u.pseudo, c.commentaire as comment, c.music_item_id, c.item_type, rc.reason, COUNT(rc.id) as count 
             FROM reports_commentaire rc
             JOIN commentaires c ON rc.commentaire_id = c.id
             JOIN users u ON c.user_id = u.id
-            GROUP BY c.id, u.pseudo, c.commentaire, rc.reason
+            GROUP BY c.id, u.pseudo, c.commentaire, c.music_item_id, c.item_type, rc.reason
             ORDER BY count DESC
         `);
+
+        // Créer les URL cliquables pour l'Admin
+        reports.forEach(r => {
+            if (r.item_type === 'track') r.url = '/details/' + encodeURIComponent(r.music_item_id);
+            else if (r.item_type === 'artist') r.url = '/artiste/' + encodeURIComponent(r.music_item_id);
+            else if (r.item_type === 'album') {
+                let parts = r.music_item_id.split('::'); // On gère le séparateur
+                if(parts.length === 2) r.url = '/album/' + encodeURIComponent(parts[0]) + '/' + encodeURIComponent(parts[1]);
+                else r.url = '#'; 
+            }
+        });
 
         const [dbArtists] = await db.query("SELECT * FROM featured_artists ORDER BY rang ASC, id ASC LIMIT 6");
         let featuredArtists = [];
@@ -399,12 +492,8 @@ app.get('/admin', requireAdmin, async (req, res) => {
             } catch(e) {}
             
             featuredArtists.push({
-                db_id: a.id,
-                position: a.rang,
-                name: a.api_artist_id,
-                listeners: listeners,
-                image: await getRealArtistImage(a.api_artist_id),
-                desc: a.accroche || ""
+                db_id: a.id, position: a.rang, name: a.api_artist_id,
+                listeners: listeners, image: await getRealArtistImage(a.api_artist_id), desc: a.accroche || ""
             });
         }
 
@@ -413,16 +502,14 @@ app.get('/admin', requireAdmin, async (req, res) => {
         const [[{ totalR }]] = await db.query("SELECT COUNT(*) as totalR FROM reports_commentaire");
 
         res.render('admin.njk', { 
-            page: 'admin', 
-            users, reports, featuredArtists,
-            isMaintenance: isMaintenance,
+            page: 'admin', users, reports, featuredArtists, isMaintenance: isMaintenance,
             stats: { users: totalU.toLocaleString('fr-FR'), comments: totalC.toLocaleString('fr-FR'), reports: totalR, artists: featuredArtists.length }
         });
     } catch (error) { res.status(500).send("Erreur serveur lors du chargement du Dashboard."); }
 });
 
 // ==========================================
-// API ADMIN : ACTIONS
+// 6. API ADMIN : ACTIONS
 // ==========================================
 app.use('/api/admin', requireAdmin);
 
@@ -437,9 +524,8 @@ app.post('/api/admin/maintenance', async (req, res) => {
 app.post('/api/admin/users/:id/role', async (req, res) => {
     try {
         const { role } = req.body;
-        if (role !== 'admin' && role !== 'utilisateur') return res.status(400).json({ error: "Rôle invalide" });
         await db.query("UPDATE users SET role = ? WHERE id = ?", [role, req.params.id]);
-        res.json({ success: true, role: role });
+        res.json({ success: true });
     } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
 
@@ -479,21 +565,16 @@ app.post('/api/admin/artists/replace', async (req, res) => {
         const { oldArtistId, newArtistName } = req.body;
         const [existing] = await db.query("SELECT * FROM featured_artists WHERE LOWER(api_artist_id) = LOWER(?)", [newArtistName]);
         if (existing.length > 0) return res.json({ error: "Cet artiste est déjà à la une !" });
-
         await db.query("UPDATE featured_artists SET api_artist_id = ?, accroche = NULL WHERE id = ?", [newArtistName, oldArtistId]);
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: "Erreur" }); }
 });
 
-// MÉLANGE ET SÉLECTION 100% ALÉATOIRE
 app.post('/api/admin/artists/:id/randomize', async (req, res) => {
     try {
         const API_KEY = process.env.LASTFM_API_KEY;
-        // On prend une page au hasard de l'API (entre 1 et 10)
         const randomPage = Math.floor(Math.random() * 10) + 1;
         const respArt = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=chart.gettopartists&api_key=${API_KEY}&format=json&limit=50&page=${randomPage}`);
-        
-        // ON MÉLANGE LE TABLEAU DE RÉSULTATS (.sort(() => 0.5 - Math.random()))
         const allArtists = respArt.data.artists.artist.map(a => a.name).sort(() => 0.5 - Math.random());
 
         const [currentDb] = await db.query("SELECT api_artist_id FROM featured_artists");
