@@ -56,7 +56,12 @@
                         </div>
                     </td>
                     <td style="color: #a1a1aa;">{{ u.email }}</td>
-                    <td><span class="badge {% if u.role == 'admin' %}badge-admin{% else %}badge-user{% endif %}">{{ u.role | upper }}</span></td>
+                    <td>
+                        <select class="role-select {% if u.role == 'admin' %}role-admin{% else %}role-user{% endif %}" onchange="changeRole({{ u.id }}, this.value, this)" title="Changer le rôle">
+                            <option value="utilisateur" {% if u.role == 'utilisateur' %}selected{% endif %}>UTILISATEUR</option>
+                            <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>ADMIN</option>
+                        </select>
+                    </td>
                     <td>
                         <span class="status" id="status-{{ u.id }}">
                             <span class="status-dot" style="background-color: {% if u.is_banned %}#ff2056{% else %}#00bc7d{% endif %};"></span> 
@@ -92,8 +97,8 @@
                     <td style="color: #d4d4d8;">{{ r.reason }}</td>
                     <td><span class="badge badge-warning">{{ r.count }}</span></td>
                     <td style="text-align: right;">
-                        <button class="action-btn" title="Ignorer le signalement" onclick="ignoreReport({{ r.comment_id }})"><i data-lucide="check"></i></button>
-                        <button class="action-btn action-delete" title="Supprimer le commentaire" onclick="deleteComment({{ r.comment_id }})"><i data-lucide="trash-2"></i></button>
+                        <button class="action-btn" title="Ignorer le signalement (Le commentaire reste)" onclick="ignoreReport({{ r.comment_id }})"><i data-lucide="check"></i></button>
+                        <button class="action-btn action-delete" title="Supprimer le commentaire de la BDD" onclick="deleteComment({{ r.comment_id }})"><i data-lucide="trash-2"></i></button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -119,9 +124,9 @@
                 {% for a in featuredArtists %}
                 <tr {% if loop.index0 == 0 %}style="background: rgba(225,42,251,0.05);"{% endif %}>
                     <td>
-                                <input type="number" class="position-input" value="{{ a.position }}" min="1" max="6" 
-                oninput="if(this.value > 6) this.value = 6; if(this.value < 1 && this.value !== '') this.value = 1;" 
-                onchange="swapArtistPosition({{ a.db_id }}, this.value)" title="Changer l'ordre">
+                        <input type="number" class="position-input" value="{{ a.position }}" min="1" max="6" 
+                               oninput="if(this.value > 6) this.value = 6; if(this.value < 1 && this.value !== '') this.value = 1;" 
+                               onchange="swapArtistPosition({{ a.db_id }}, this.value)" title="Changer l'ordre">
                     </td>
                     <td>
                         <div class="artist-cell">
@@ -157,16 +162,30 @@
 
 <div id="replace-modal" class="modal-overlay" style="display: none;">
     <div class="modal-box">
-        <h3>Remplacer un artiste</h3>
-        <p>Il y a déjà 6 artistes à la une. Quel artiste voulez-vous remplacer par <strong id="new-artist-name-display" style="color: #d946ef;"></strong> ?</p>
-        <select id="replace-select" class="custom-select">
-            {% for a in featuredArtists %}
-                <option value="{{ a.db_id }}">{{ a.name }}</option>
-            {% endfor %}
-        </select>
-        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+        <div class="modal-header">
+            <div class="modal-icon"><i data-lucide="refresh-cw"></i></div>
+            <div>
+                <h3>Remplacer un artiste</h3>
+                <p class="modal-subtitle">Quota maximum atteint (6/6)</p>
+            </div>
+        </div>
+        
+        <p class="modal-text">Sélectionnez l'artiste que vous souhaitez remplacer par <strong id="new-artist-name-display" style="color: #d946ef; font-size: 1.1em;"></strong> :</p>
+        
+        <div class="custom-select-wrapper">
+            <select id="replace-select" class="custom-select">
+                {% for a in featuredArtists %}
+                    <option value="{{ a.db_id }}">Position {{ a.position }} - {{ a.name }}</option>
+                {% endfor %}
+            </select>
+            <i data-lucide="chevron-down" class="select-icon"></i>
+        </div>
+        
+        <div class="modal-actions">
             <button class="btn-cancel" onclick="closeModal()">Annuler</button>
-            <button class="btn-confirm" onclick="confirmReplace()">Remplacer</button>
+            <button class="btn-confirm" onclick="confirmReplace()">
+                <i data-lucide="check" style="width: 16px; height: 16px; margin-right: 6px;"></i> Confirmer
+            </button>
         </div>
     </div>
 </div>
@@ -174,7 +193,9 @@
 <script>
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
+    // ==========================================
     // MAINTENANCE
+    // ==========================================
     async function toggleMaintenance(checkbox) {
         await fetch('/api/admin/maintenance', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: checkbox.checked })
@@ -182,7 +203,36 @@
         window.location.reload();
     }
 
+    // ==========================================
     // UTILISATEURS
+    // ==========================================
+    
+    // Changer le rôle via la liste déroulante
+    async function changeRole(id, newRole, selectElement) {
+        if (!confirm(`Changer le rôle de cet utilisateur en ${newRole.toUpperCase()} ?`)) {
+            window.location.reload(); // Annule le changement visuel si on dit non
+            return;
+        }
+        
+        const res = await fetch(`/api/admin/users/${id}/role`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: newRole })
+        });
+        
+        if (res.ok) {
+            // Mise à jour visuelle des couleurs de la liste déroulante
+            if (newRole === 'admin') {
+                selectElement.classList.remove('role-user');
+                selectElement.classList.add('role-admin');
+            } else {
+                selectElement.classList.remove('role-admin');
+                selectElement.classList.add('role-user');
+            }
+        }
+    }
+
+    // Toggle Ban (Bannir / Débannir)
     async function toggleBan(id, btnElement) {
         const isBanning = btnElement.innerHTML.includes('ban');
         if (!confirm(isBanning ? "Bannir cet utilisateur ?" : "Débannir et réactiver ce compte ?")) return;
@@ -202,31 +252,40 @@
         lucide.createIcons();
     }
     
+    // Supprimer utilisateur
     async function deleteUser(id) {
         if (!confirm("Supprimer DÉFINITIVEMENT cet utilisateur de la base de données ?")) return;
         if ((await fetch(`/api/admin/users/${id}`, { method: 'DELETE' })).ok) document.getElementById(`user-row-${id}`).remove();
     }
 
+    // ==========================================
     // COMMENTAIRES
+    // ==========================================
+    
+    // Bouton Check : Ignore le signalement
     async function ignoreReport(id) {
         if ((await fetch(`/api/admin/reports/${id}/ignore`, { method: 'POST' })).ok) document.getElementById(`report-row-${id}`).remove();
     }
+    
+    // Bouton Poubelle : Supprime le commentaire
     async function deleteComment(id) {
         if (!confirm("Supprimer ce commentaire pour toujours ?")) return;
         if ((await fetch(`/api/admin/comments/${id}`, { method: 'DELETE' })).ok) document.getElementById(`report-row-${id}`).remove();
     }
 
+    // ==========================================
     // ARTISTES
+    // ==========================================
+    
     async function updateDesc(id, text) {
         await fetch('/api/admin/artists/description', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id, desc: text }) });
     }
 
-async function swapArtistPosition(dbId, newPos) {
+    async function swapArtistPosition(dbId, newPos) {
         const position = parseInt(newPos);
-        // Sécurité stricte : On bloque si ce n'est pas entre 1 et 6
         if (isNaN(position) || position < 1 || position > 6) {
             alert("❌ Erreur : La position doit obligatoirement être comprise entre 1 et 6 !");
-            window.location.reload(); // Annule la modification visuelle
+            window.location.reload(); 
             return;
         }
 
@@ -235,7 +294,7 @@ async function swapArtistPosition(dbId, newPos) {
             headers: {'Content-Type': 'application/json'}, 
             body: JSON.stringify({ id: dbId, newPosition: position }) 
         });
-        window.location.reload(); // Recharge pour afficher le nouvel ordre
+        window.location.reload();
     }
 
     async function randomizeArtist(id, name) {
@@ -283,7 +342,7 @@ async function swapArtistPosition(dbId, newPos) {
         });
         const data = await res.json();
         if (data.error) {
-            alert("Erreur : " + data.error); // Gère l'anti-doublon "Cet artiste y est déjà"
+            alert("Erreur : " + data.error); 
         } else {
             window.location.reload();
         }
@@ -291,7 +350,6 @@ async function swapArtistPosition(dbId, newPos) {
 </script>
 
 <style>
-    /* CSS Identique à la version précédente (très propre) */
     .admin-dashboard { padding: 40px; max-width: 1200px; margin: 0 auto; color: white; font-family: 'Inter', sans-serif; }
     .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
     .admin-header h1 { font-size: 30px; font-weight: bold; margin: 0; }
@@ -316,9 +374,15 @@ async function swapArtistPosition(dbId, newPos) {
     .admin-table td { padding: 20px 24px; border-bottom: 1px solid #27272a; font-size: 14px; vertical-align: middle; }
     .user-cell { display: flex; align-items: center; gap: 12px; }
     .user-cell img { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #3f3f46; }
+    
+    /* MENU DÉROULANT DES RÔLES */
+    .role-select { padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; outline: none; cursor: pointer; border: 1px solid transparent; transition: 0.2s; text-transform: uppercase; }
+    .role-select:focus { border-color: #e12afb; }
+    .role-admin { background: rgba(225,42,251,0.1); color: #e12afb; }
+    .role-user { background: rgba(63,63,71,0.3); color: #a1a1aa; }
+    .role-select option { background: #18181b; color: white; font-weight: bold; text-transform: uppercase; }
+
     .badge { padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
-    .badge-admin { background: rgba(225,42,251,0.1); color: #e12afb; border: 1px solid rgba(225,42,251,0.2); }
-    .badge-user { background: rgba(63,63,71,0.3); color: #a1a1aa; border: 1px solid rgba(63,63,71,0.5); }
     .badge-warning { background: rgba(254,154,0,0.1); color: #fe9a00; font-size: 13px; }
     .status { display: flex; align-items: center; gap: 8px; font-weight: 500; }
     .status-dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -339,10 +403,25 @@ async function swapArtistPosition(dbId, newPos) {
     .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
     input:checked + .slider { background-color: #00bc7d; }
     input:checked + .slider:before { transform: translateX(20px); }
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 9999; }
-    .modal-box { background: #18181b; border: 1px solid #3f3f46; padding: 30px; border-radius: 20px; width: 400px; text-align: left; }
-    .custom-select { width: 100%; padding: 12px; background: #09090b; color: white; border: 1px solid #3f3f46; border-radius: 10px; margin-top: 15px; }
-    .btn-cancel { background: transparent; color: #a1a1aa; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
-    .btn-confirm { background: linear-gradient(135deg, #d946ef, #8b5cf6); color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; }
+    
+    /* NOUEAU DESIGN POPUP */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+    .modal-box { background: #09090b; border: 1px solid #27272a; padding: 30px; border-radius: 24px; width: 420px; text-align: left; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+    .modal-header { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
+    .modal-icon { background: rgba(217, 70, 239, 0.1); color: #d946ef; width: 48px; height: 48px; border-radius: 14px; display: flex; justify-content: center; align-items: center; }
+    .modal-box h3 { margin: 0; font-size: 20px; color: white; font-weight: bold; }
+    .modal-subtitle { color: #71717b; font-size: 13px; margin: 4px 0 0 0; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+    .modal-text { color: #a1a1aa; font-size: 15px; line-height: 1.5; margin: 20px 0; }
+
+    .custom-select-wrapper { position: relative; margin-bottom: 30px; }
+    .custom-select { width: 100%; padding: 14px 16px; background: #18181b; color: white; border: 1px solid #3f3f46; border-radius: 12px; font-size: 15px; appearance: none; outline: none; cursor: pointer; transition: 0.2s; }
+    .custom-select:focus { border-color: #d946ef; }
+    .select-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: #a1a1aa; width: 18px; pointer-events: none; }
+
+    .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
+    .btn-cancel { background: transparent; color: #a1a1aa; border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .btn-cancel:hover { background: rgba(255,255,255,0.05); color: white; }
+    .btn-confirm { background: linear-gradient(135deg, #d946ef, #8b5cf6); color: white; border: none; padding: 12px 24px; border-radius: 12px; cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(217, 70, 239, 0.4); display: flex; align-items: center; }
+    .btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(217, 70, 239, 0.6); }
 </style>
 {% endblock %}

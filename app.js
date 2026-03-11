@@ -3,20 +3,16 @@ const nunjucks = require('nunjucks');
 const path = require('path');
 const axios = require('axios');
 const session = require('express-session');
-const db = require('./src/config/database'); // Connexion MySQL
+const db = require('./src/config/database');
 require('dotenv').config();
 
 const app = express();
 const port = 3000;
 
-// ==========================================
-// 1. CONFIGURATION ET MIDDLEWARES GLOBAUX
-// ==========================================
-
 nunjucks.configure('views', { autoescape: true, express: app });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json()); // Indispensable pour l'API Admin
+app.use(express.json());
 
 app.use(session({
     secret: 'bpm_super_secret_key',
@@ -24,40 +20,50 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// Variable globale pour la maintenance
-global.MAINTENANCE_MODE = false;
-
-// Middleware de Maintenance (Bloque l'accès si activé)
-app.use((req, res, next) => {
-    if (global.MAINTENANCE_MODE && !req.path.startsWith('/css') && !req.path.startsWith('/images') && !req.path.startsWith('/api')) {
-        const isAdmin = req.session.user && req.session.user.role === 'admin';
-        if (!isAdmin && req.path !== '/login' && req.path !== '/connexion') {
-            return res.status(503).send("<body style='background:#09090b; color:white; font-family:sans-serif; text-align:center; padding-top:100px;'><h1>🛠 Site en maintenance</h1><p>BPM revient très vite, nos équipes travaillent sur une mise à jour !</p></body>");
-        }
+// MIDDLEWARE : SÉCURITÉ MAINTENANCE (Lié à la table site_settings)
+app.use(async (req, res, next) => {
+    if (req.path.startsWith('/css') || req.path.startsWith('/images') || req.path.startsWith('/api')) {
+        return next();
     }
-    next();
+    try {
+        const [settings] = await db.query('SELECT is_maintenance, maintenance_message FROM site_settings WHERE id = 1');
+        const isMaintenance = settings.length > 0 ? settings[0].is_maintenance : false;
+        const maintenanceMsg = settings.length > 0 ? settings[0].maintenance_message : "Le site fait peau neuve. De retour dans quelques minutes !";
+
+        if (isMaintenance) {
+            const isAdmin = req.session.user && req.session.user.role === 'admin';
+            if (!isAdmin) {
+                if (['/login', '/connexion', '/register', '/inscription'].includes(req.path)) {
+                    return next();
+                }
+                if (req.path === '/admin') {
+                    return res.redirect('/login');
+                }
+                return res.status(503).send(`
+                    <body style='background:#09090b; color:white; font-family:sans-serif; text-align:center; padding-top:100px;'>
+                        <h1 style='font-size: 2rem; margin-bottom: 10px;'>🛠 Site en maintenance</h1>
+                        <p style='color: #a1a1aa;'>${maintenanceMsg}</p>
+                    </body>
+                `);
+            }
+        }
+        next();
+    } catch (e) { next(); }
 });
 
-// Middleware Global (Variables Nunjucks accessibles partout)
 app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
     next();
 });
 
-// VIGILE ADMIN : Middleware de sécurité stricte pour l'Admin
 function requireAdmin(req, res, next) {
     if (!req.session.user || req.session.user.role !== 'admin') {
-        // Si c'est une requête API (un bouton cliqué), on renvoie une erreur JSON
-        if (req.path.startsWith('/api/')) {
-            return res.status(403).json({ error: "Accès refusé. Réservé aux administrateurs." });
-        }
-        // Sinon, on redirige vers l'accueil
-        return res.redirect('/');
+        if (req.path.startsWith('/api/')) return res.status(403).json({ error: "Accès refusé. Réservé aux administrateurs." });
+        return res.redirect('/login');
     }
-    next(); // L'utilisateur est bien admin, on le laisse passer !
+    next();
 }
 
-// Fonction utilitaire (Image Deezer)
 async function getRealArtistImage(artistName) {
     try {
         const cleanName = artistName.split(',')[0].split('&')[0].trim();
@@ -71,19 +77,36 @@ async function getRealArtistImage(artistName) {
 }
 
 // ==========================================
-// 2. ROUTES PUBLIQUES (Accueil, Recherche...)
+// ACCUEIL (Artistes à la une & Bannière)
 // ==========================================
-
 app.get('/', async (req, res) => {
     try {
         const API_KEY = process.env.LASTFM_API_KEY;
-        const respArt = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=chart.gettopartists&api_key=${API_KEY}&format=json&limit=6`);
         
-        const topArtists = await Promise.all(respArt.data.artists.artist.map(async a => {
-            let listenerCount = parseInt(a.listeners);
-            let formattedListeners = listenerCount >= 1000000 ? (listenerCount / 1000000).toFixed(1) + "M" : listenerCount.toLocaleString('fr-FR');
-            return { name: a.name, listeners: formattedListeners, image: await getRealArtistImage(a.name) };
-        }));
+        // Récupération des 6 artistes depuis la BDD
+        const [dbArtists] = await db.query("SELECT * FROM featured_artists ORDER BY rang ASC LIMIT 6");
+        let topArtists = [];
+        
+        for (let a of dbArtists) {
+            let listeners = "0M";
+            try {
+                const infoResp = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(a.api_artist_id)}&api_key=${API_KEY}&format=json`);
+                if (infoResp.data.artist) {
+                    let lst = parseInt(infoResp.data.artist.stats.listeners);
+                    listeners = lst >= 1000000 ? (lst / 1000000).toFixed(1) + "M" : lst.toLocaleString('fr-FR');
+                }
+            } catch(e) {}
+            
+            topArtists.push({
+                name: a.api_artist_id,
+                listeners: listeners,
+                image: await getRealArtistImage(a.api_artist_id),
+                accroche: a.accroche || `Découvrez l'univers de ${a.api_artist_id}, l'un des artistes les plus écoutés du moment sur BPM.`
+            });
+        }
+
+        // L'artiste en position 1 devient le "Héro" de la bannière !
+        const heroArtist = topArtists.length > 0 ? topArtists[0] : null;
 
         const randomPage = Math.floor(Math.random() * 50) + 1;
         const respMatch = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=rj&api_key=${API_KEY}&format=json&limit=10&page=${randomPage}`);
@@ -91,10 +114,11 @@ app.get('/', async (req, res) => {
             title: alb.name, artist: alb.artist.name, image: alb.image[3]['#text'] || "https://via.placeholder.com/300"
         }));
 
-        res.render('index.njk', { topArtists, heroArtist: topArtists[0], initialMatch, page: 'home' });
+        res.render('index.njk', { topArtists, heroArtist, initialMatch, page: 'home' });
     } catch (e) { res.status(500).send("Erreur Accueil"); }
 });
 
+// AUTRES ROUTES (Identiques)
 app.get('/search', async (req, res) => {
     try {
         const { q, type, tag, years } = req.query;
@@ -249,13 +273,9 @@ app.get('/album/:artist/:album', async (req, res) => {
 });
 
 app.get('/notifications', (req, res) => {
-    const notifications = []; // Vide pour le moment
+    const notifications = []; 
     res.render('notifications.njk', { notifications, page: 'notifications' });
 });
-
-// ==========================================
-// 3. API PUBLIQUE (Boutons Match et Recherche)
-// ==========================================
 
 app.get('/api/match', async (req, res) => {
     try {
@@ -299,9 +319,8 @@ app.get('/api/suggest', async (req, res) => {
 });
 
 // ==========================================
-// 4. AUTHENTIFICATION (Login / Register)
+// AUTHENTIFICATION
 // ==========================================
-
 app.get('/login', (req, res) => res.render('login.njk', { page: 'login' }));
 app.get('/register', (req, res) => res.render('register.njk', { page: 'register' }));
 app.get('/connexion', (req, res) => res.redirect('/login'));
@@ -316,17 +335,18 @@ app.post('/login', async (req, res) => {
         const user = users[0];
         
         if (password === user.password) {
-            // 1. VÉRIFICATION MAINTENANCE (Seul l'admin passe)
-            if (global.MAINTENANCE_MODE && user.role !== 'admin') {
+            const [settings] = await db.query('SELECT is_maintenance FROM site_settings WHERE id = 1');
+            const isMaintenance = settings.length > 0 ? settings[0].is_maintenance : false;
+
+            if (isMaintenance && user.role !== 'admin') {
                 return res.render('login.njk', { page: 'login', error: "🛠 Le site est en maintenance. Seuls les administrateurs peuvent se connecter." });
             }
-            // 2. VÉRIFICATION BANNISSEMENT (is_banned est un booléen / 0 ou 1)
             if (user.is_banned == 1) {
                 return res.render('login.njk', { page: 'login', error: "🚨 Votre compte a été banni par un administrateur." });
             }
 
             req.session.user = { id: user.id, pseudo: user.pseudo, role: user.role, avatar: user.avatar };
-            res.redirect('/');
+            res.redirect(user.role === 'admin' ? '/admin' : '/');
         } else {
             res.render('login.njk', { page: 'login', error: "Mot de passe incorrect." });
         }
@@ -334,8 +354,6 @@ app.post('/login', async (req, res) => {
 });
 
 app.post('/register', (req, res) => {
-    const { pseudo, email, password } = req.body;
-    // TODO : Insérer l'utilisateur en BDD
     res.send("Formulaire d'inscription reçu ! Regarde ton terminal Node.js.");
 });
 
@@ -346,18 +364,17 @@ app.get('/logout', (req, res) => {
 
 
 // ==========================================
-// 5. LE DASHBOARD ADMIN (SÉCURISÉ)
+// DASHBOARD ADMIN (SÉCURISÉ)
 // ==========================================
-
-// On applique le vigile "requireAdmin" UNIQUEMENT sur la page /admin
 app.get('/admin', requireAdmin, async (req, res) => {
     try {
         const API_KEY = process.env.LASTFM_API_KEY;
 
-        // Utilisateurs
+        const [settings] = await db.query('SELECT is_maintenance FROM site_settings WHERE id = 1');
+        const isMaintenance = settings.length > 0 ? settings[0].is_maintenance : false;
+
         const [users] = await db.query("SELECT id, pseudo, email, role, is_banned FROM users ORDER BY id DESC LIMIT 50");
         
-        // Signalements
         const [reports] = await db.query(`
             SELECT c.id as comment_id, u.pseudo, c.commentaire as comment, rc.reason, COUNT(rc.id) as count 
             FROM reports_commentaire rc
@@ -367,7 +384,6 @@ app.get('/admin', requireAdmin, async (req, res) => {
             ORDER BY count DESC
         `);
 
-        // Artistes à la une
         const [dbArtists] = await db.query("SELECT * FROM featured_artists ORDER BY rang ASC, id ASC LIMIT 6");
         let featuredArtists = [];
         
@@ -392,7 +408,6 @@ app.get('/admin', requireAdmin, async (req, res) => {
             });
         }
 
-        // Stats globales
         const [[{ totalU }]] = await db.query("SELECT COUNT(*) as totalU FROM users");
         const [[{ totalC }]] = await db.query("SELECT COUNT(*) as totalC FROM commentaires");
         const [[{ totalR }]] = await db.query("SELECT COUNT(*) as totalR FROM reports_commentaire");
@@ -400,29 +415,34 @@ app.get('/admin', requireAdmin, async (req, res) => {
         res.render('admin.njk', { 
             page: 'admin', 
             users, reports, featuredArtists,
-            isMaintenance: global.MAINTENANCE_MODE,
+            isMaintenance: isMaintenance,
             stats: { users: totalU.toLocaleString('fr-FR'), comments: totalC.toLocaleString('fr-FR'), reports: totalR, artists: featuredArtists.length }
         });
-    } catch (error) {
-        console.error("Erreur Dashboard:", error);
-        res.status(500).send("Erreur serveur lors du chargement du Dashboard.");
-    }
+    } catch (error) { res.status(500).send("Erreur serveur lors du chargement du Dashboard."); }
 });
 
-
 // ==========================================
-// 6. API ADMIN : ACTIONS (SÉCURISÉES)
+// API ADMIN : ACTIONS
 // ==========================================
-// On applique le vigile "requireAdmin" à TOUTES les requêtes qui commencent par /api/admin/
 app.use('/api/admin', requireAdmin);
 
-// MAINTENANCE
-app.post('/api/admin/maintenance', (req, res) => {
-    global.MAINTENANCE_MODE = req.body.active;
-    res.json({ success: true });
+app.post('/api/admin/maintenance', async (req, res) => {
+    try {
+        const isActive = req.body.active ? 1 : 0;
+        await db.query("UPDATE site_settings SET is_maintenance = ? WHERE id = 1", [isActive]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
 
-// UTILISATEURS
+app.post('/api/admin/users/:id/role', async (req, res) => {
+    try {
+        const { role } = req.body;
+        if (role !== 'admin' && role !== 'utilisateur') return res.status(400).json({ error: "Rôle invalide" });
+        await db.query("UPDATE users SET role = ? WHERE id = ?", [role, req.params.id]);
+        res.json({ success: true, role: role });
+    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+});
+
 app.post('/api/admin/users/:id/ban', async (req, res) => {
     try {
         const [users] = await db.query("SELECT is_banned FROM users WHERE id = ?", [req.params.id]);
@@ -440,31 +460,20 @@ app.delete('/api/admin/users/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
 
-// ==========================================
-// API ADMIN : GESTION DES COMMENTAIRES
-// ==========================================
-
-// Bouton VALIDER (Check) : Ignorer le signalement
 app.post('/api/admin/reports/:comment_id/ignore', async (req, res) => {
     try {
-        // Ça supprime UNIQUEMENT le signalement.
-        // Le commentaire est donc "blanchi" et reste visible par les autres utilisateurs.
         await db.query("DELETE FROM reports_commentaire WHERE commentaire_id = ?", [req.params.comment_id]);
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
 
-// Bouton POUBELLE : Supprimer le commentaire signalé
 app.delete('/api/admin/comments/:id', async (req, res) => {
     try {
-        // Ça supprime LE commentaire ciblé. 
-        // (Et grâce au "ON DELETE CASCADE" de ta base de données, ça effacera automatiquement les signalements liés à ce commentaire précis, sans toucher aux autres commentaires !)
         await db.query("DELETE FROM commentaires WHERE id = ?", [req.params.id]);
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
 
-// ARTISTES À LA UNE
 app.post('/api/admin/artists/replace', async (req, res) => {
     try {
         const { oldArtistId, newArtistName } = req.body;
@@ -476,11 +485,16 @@ app.post('/api/admin/artists/replace', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Erreur" }); }
 });
 
+// MÉLANGE ET SÉLECTION 100% ALÉATOIRE
 app.post('/api/admin/artists/:id/randomize', async (req, res) => {
     try {
         const API_KEY = process.env.LASTFM_API_KEY;
-        const respArt = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=chart.gettopartists&api_key=${API_KEY}&format=json&limit=50`);
-        const allArtists = respArt.data.artists.artist.map(a => a.name);
+        // On prend une page au hasard de l'API (entre 1 et 10)
+        const randomPage = Math.floor(Math.random() * 10) + 1;
+        const respArt = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=chart.gettopartists&api_key=${API_KEY}&format=json&limit=50&page=${randomPage}`);
+        
+        // ON MÉLANGE LE TABLEAU DE RÉSULTATS (.sort(() => 0.5 - Math.random()))
+        const allArtists = respArt.data.artists.artist.map(a => a.name).sort(() => 0.5 - Math.random());
 
         const [currentDb] = await db.query("SELECT api_artist_id FROM featured_artists");
         const currentNames = currentDb.map(row => row.api_artist_id.toLowerCase());
@@ -513,9 +527,4 @@ app.post('/api/admin/artists/description', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Erreur" }); }
 });
 
-// ==========================================
-// LANCEMENT DU SERVEUR
-// ==========================================
-app.listen(port, () => { 
-    console.log(`✅ Serveur BPM lancé sur http://localhost:${port}`); 
-});
+app.listen(port, () => { console.log(`✅ Serveur BPM lancé sur http://localhost:${port}`); });
