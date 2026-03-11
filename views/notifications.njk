@@ -6,7 +6,7 @@
     <div class="notifications-header">
         <h1>Notifications</h1>
         {% if notifications.length > 0 %}
-        <button class="mark-read-btn">Tout marquer comme lu</button>
+        <button class="mark-read-btn">Tout supprimer</button>
         {% endif %}
     </div>
 
@@ -21,7 +21,9 @@
                 </div>
                 <div class="notif-content">
                     <p class="notif-text">
-                        <span class="notif-user">{{ notif.user }}</span> {{ notif.action }}
+                        <a href="/profil/{{ notif.user }}" class="notif-user notif-link">{{ notif.user }}</a> 
+                        
+                        {{ notif.action | safe }}
                     </p>
                     <span class="notif-time">{{ notif.time }}</span>
                 </div>
@@ -182,6 +184,18 @@
     .delete-notif-btn:hover {
         background-color: rgba(239, 68, 68, 0.1); /* Fond rouge léger */
         color: #ef4444; /* Poubelle rouge */
+    }
+
+    /* DESIGN DES LIENS CLIQUABLES */
+    .notif-link {
+        text-decoration: none;
+        color: inherit; /* Garde la couleur d'origine du texte */
+        transition: color 0.2s ease;
+    }
+
+    .notif-link:hover {
+        color: #e12afb; /* Devient Violet BPM au survol */
+        text-decoration: underline;
     }
 </style>
 

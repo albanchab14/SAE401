@@ -340,7 +340,7 @@ app.get('/notifications', async (req, res) => {
             SELECT n.*, u.pseudo as actor_pseudo, u.avatar as actor_avatar 
             FROM notifications n
             JOIN users u ON n.actor_id = u.id
-            WHERE n.user_id = ?
+            WHERE n.user_id = ? AND n.is_read = 0
             ORDER BY n.date_creation DESC
         `, [req.session.user.id]);
 
@@ -351,30 +351,14 @@ app.get('/notifications', async (req, res) => {
             // On adapte le style selon le type de notif
             if (n.type === 'like') {
                 icon = 'heart'; color = '#e12afb'; bgColor = 'rgba(225, 42, 251, 0.1)';
-                actionText = `a aimé votre commentaire sur ${n.reference}`;
+                actionText = `a aimé votre commentaire sur <a href="/album/${encodeURIComponent(n.reference)}" class="notif-link">${n.reference}</a>`;
             } else if (n.type === 'follow') {
                 icon = 'user-plus'; color = '#3b82f6'; bgColor = 'rgba(59, 130, 246, 0.1)';
                 actionText = 'a commencé à vous suivre';
             } else if (n.type === 'rating') {
                 icon = 'star'; color = '#eab308'; bgColor = 'rgba(234, 179, 8, 0.1)';
-                actionText = 'a noté 5 étoiles un album que vous avez aimé';
+                actionText = `a noté 5 étoiles un album que vous avez aimé`; 
             }
-
-            // --- PETITE FONCTION POUR FORMATER LE TEMPS ---
-            const notifDate = new Date(n.date_creation);
-            const now = new Date();
-            const diffInMinutes = Math.floor((now - notifDate) / (1000 * 60));
-            
-            let timeString = '';
-            if (diffInMinutes < 60) {
-                timeString = `Il y a ${diffInMinutes} min`;
-            } else if (diffInMinutes < 1440) {
-                const hours = Math.floor(diffInMinutes / 60);
-                timeString = `Il y a ${hours} heure${hours > 1 ? 's' : ''}`;
-            } else {
-                timeString = 'Hier'; // Ou formater avec la vraie date si tu préfères
-            }
-            // ----------------------------------------------
 
             return {
                 id: n.id,
@@ -385,7 +369,7 @@ app.get('/notifications', async (req, res) => {
                 user: n.actor_pseudo,
                 action: actionText,
                 is_read: n.is_read,
-                time: timeString // On envoie le temps joliment formaté !
+                time: timeAgo(n.date_creation) // ✨ Utilisation directe de ta fonction globale !
             };
         });
 
@@ -397,12 +381,12 @@ app.get('/notifications', async (req, res) => {
     }
 });
 
-// Action : Marquer toutes les notifications comme lues
+// Action : Supprimer TOUTES les notifications
 app.post('/notifications/read-all', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'Non connecté' });
     try {
-        // On passe is_read à 1 (Vrai) pour cet utilisateur
-        await db.query('UPDATE notifications SET is_read = 1 WHERE user_id = ?', [req.session.user.id]);
+        // ✨ ON SUPPRIME TOUT AU LIEU DE JUSTE METTRE A JOUR
+        await db.query('DELETE FROM notifications WHERE user_id = ?', [req.session.user.id]);
         res.json({ success: true });
     } catch (error) {
         console.error(error);
@@ -623,16 +607,41 @@ app.post('/api/comments/:id/like', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
     try {
         const commentId = req.params.id;
-        const userId = req.session.user.id;
+        const userId = req.session.user.id; // L'utilisateur qui clique sur "Like"
+        
         const [exist] = await db.query("SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
+        
         if (exist.length > 0) {
+            // SI LE LIKE EXISTE DÉJÀ : On l'enlève (Unlike)
             await db.query("DELETE FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
             res.json({ liked: false });
         } else {
+            // SI LE LIKE N'EXISTE PAS : On l'ajoute
             await db.query("INSERT INTO comment_likes (user_id, comment_id) VALUES (?, ?)", [userId, commentId]);
+            
+            // ✨ LA MAGIE DES NOTIFICATIONS COMMENCE ICI ✨
+            // On récupère l'auteur du commentaire et le nom de l'album
+            const [comments] = await db.query("SELECT user_id, music_item_id FROM commentaires WHERE id = ?", [commentId]);
+            
+            if (comments.length > 0) {
+                const authorId = comments[0].user_id;
+                const reference = comments[0].music_item_id;
+                
+                // On n'envoie la notification QUE SI on ne like pas son propre commentaire !
+                if (userId !== authorId) {
+                    await db.query(`
+                        INSERT INTO notifications (user_id, actor_id, type, reference, date_creation) 
+                        VALUES (?, ?, 'like', ?, ?)
+                    `, [authorId, userId, reference, new Date()]);
+                }
+            }
+            
             res.json({ liked: true });
         }
-    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+    } catch (e) { 
+        console.error("Erreur lors du like :", e);
+        res.status(500).json({ error: "Erreur BDD" }); 
+    }
 });
 
 app.post('/api/comments/:id/report', async (req, res) => {
