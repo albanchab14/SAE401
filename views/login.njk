@@ -44,4 +44,29 @@
   </div>
 
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // On récupère toutes les icônes en forme d'œil
+    const eyeIcons = document.querySelectorAll('.input-icon-right');
+    
+    eyeIcons.forEach(icon => {
+      icon.addEventListener('click', function() {
+        // On cible l'input qui se trouve juste avant l'icône dans ton HTML
+        const input = this.previousElementSibling;
+        
+        if (input && input.tagName === 'INPUT') {
+          // On bascule entre 'password' et 'text'
+          if (input.type === 'password') {
+            input.type = 'text';
+            this.style.opacity = '0.5'; // Petit effet visuel pour montrer que c'est actif
+          } else {
+            input.type = 'password';
+            this.style.opacity = '1'; // Retour à la normale
+          }
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}
