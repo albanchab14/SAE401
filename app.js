@@ -426,7 +426,7 @@ app.post('/notifications/delete/:id', async (req, res) => {
 
 
 // ==========================================
-// 4.5 PAGE DE PROFIL (AVEC ENRICHISSEMENT API)
+// 4.5 PAGE DE PROFIL (AVEC ENRICHISSEMENT API ET LIENS)
 // ==========================================
 app.get('/profil', async (req, res) => {
     if (!req.session.user) return res.redirect('/login');
@@ -436,34 +436,32 @@ app.get('/profil', async (req, res) => {
     try {
         const [users] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
         const userDb = users[0];
-
         const dateIns = new Date(userDb.date_inscription);
         const mois = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
         const joinDate = `${mois[dateIns.getMonth()]} ${dateIns.getFullYear()}`;
 
-        // RÉCUPÉRATION DES COMMENTAIRES ET DE LEURS IMAGES VIA L'API !
         const [commentsDb] = await db.query(`
-            SELECT c.*, 
-                   (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as likes
-            FROM commentaires c 
-            WHERE c.user_id = ? 
-            ORDER BY c.date_commentaire DESC
+            SELECT c.*, (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as likes
+            FROM commentaires c WHERE c.user_id = ? ORDER BY c.date_commentaire DESC
         `, [userId]);
 
         for (let c of commentsDb) {
             c.title = "Titre Inconnu";
             c.artist = "Artiste inconnu";
             c.image = "https://via.placeholder.com/150?text=BPM";
+            c.url = "#"; // Par défaut
             
             try {
                 if (c.item_type === 'album') {
                     let parts = c.music_item_id.split('::');
                     c.artist = parts[0] || 'Inconnu';
                     c.title = parts[1] || c.music_item_id;
+                    c.url = `/album/${encodeURIComponent(c.artist)}/${encodeURIComponent(c.title)}`;
                     const resp = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=album.getInfo&api_key=${API_KEY}&artist=${encodeURIComponent(c.artist)}&album=${encodeURIComponent(c.title)}&format=json`);
                     if (resp.data.album && resp.data.album.image) c.image = resp.data.album.image[3]['#text'] || c.image;
                 } else if (c.item_type === 'track') {
                     c.title = c.music_item_id;
+                    c.url = `/details/${encodeURIComponent(c.title)}`;
                     const resp = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=track.search&track=${encodeURIComponent(c.title)}&api_key=${API_KEY}&format=json&limit=1`);
                     if (resp.data.results && resp.data.results.trackmatches.track.length > 0) {
                         const trk = resp.data.results.trackmatches.track[0];
@@ -473,9 +471,10 @@ app.get('/profil', async (req, res) => {
                 } else if (c.item_type === 'artist') {
                     c.title = c.music_item_id;
                     c.artist = "Artiste";
+                    c.url = `/artiste/${encodeURIComponent(c.title)}`;
                     c.image = await getRealArtistImage(c.title);
                 }
-            } catch(err) {} // On ignore les erreurs API pour ne pas bloquer la page
+            } catch(err) {}
         }
 
         const [favoritesDb] = await db.query('SELECT * FROM favorites WHERE user_id = ? ORDER BY date_ajout DESC', [userId]);
@@ -493,73 +492,35 @@ app.get('/profil', async (req, res) => {
         const [[{ total_likes }]] = await db.query('SELECT COUNT(*) as total_likes FROM comment_likes cl JOIN commentaires c ON cl.comment_id = c.id WHERE c.user_id = ?', [userId]);
         const [[{ total_suivis }]] = await db.query('SELECT COUNT(*) as total_suivis FROM follows WHERE follower_id = ?', [userId]);
 
-        const currentMonth = new Date().getMonth() + 1;
-        const currentYear = new Date().getFullYear();
-        
-        const [[{ month_avis }]] = await db.query(`SELECT COUNT(*) as month_avis FROM commentaires WHERE user_id = ? AND MONTH(date_commentaire) = ? AND YEAR(date_commentaire) = ?`, [userId, currentMonth, currentYear]);
-        const [[{ month_likes }]] = await db.query(`SELECT COUNT(*) as month_likes FROM comment_likes cl JOIN commentaires c ON cl.comment_id = c.id WHERE c.user_id = ? AND MONTH(cl.date_like) = ? AND YEAR(cl.date_like) = ?`, [userId, currentMonth, currentYear]);
-        const [[{ month_follows }]] = await db.query(`SELECT COUNT(*) as month_follows FROM follows WHERE follower_id = ? AND MONTH(date_follow) = ? AND YEAR(date_follow) = ?`, [userId, currentMonth, currentYear]);
-
-        const moisImpact = ['JANVIER', 'FÉVRIER', 'MARS', 'AVRIL', 'MAI', 'JUIN', 'JUILLET', 'AOÛT', 'SEPTEMBRE', 'OCTOBRE', 'NOVEMBRE', 'DÉCEMBRE'];
-
-        const userProfile = {
-            id: userDb.id,
-            name: userDb.pseudo,
-            email: userDb.email,
-            joinDate: joinDate,
-            bio: userDb.bio || "Aucune biographie renseignée.",
-            avatar: userDb.avatar || `https://ui-avatars.com/api/?name=${userDb.pseudo}&background=27272a&color=fff`,
-            stats: { 
-                favoris: formattedFavorites.length, 
-                avis: total_avis, 
-                suivis: total_suivis 
-            }
-        };
-
-        const userImpact = {
-            month: `${moisImpact[currentMonth - 1]} ${currentYear}`,
-            albumsRated: month_avis, 
-            musicCommented: month_avis,
-            likesReceived: month_likes,
-            membersFollowed: month_follows
-        };
-
         res.render('profil.njk', { 
-            user: userProfile, 
-            comments: commentsDb, 
-            favorites: formattedFavorites,
-            impact: userImpact,
-            page: 'profil'
+            user: { ...userDb, name: userDb.pseudo, joinDate, bio: userDb.bio || "Mélomane.", avatar: userDb.avatar || `https://ui-avatars.com/api/?name=${userDb.pseudo}&background=27272a&color=fff`, stats: { favoris: formattedFavorites.length, avis: total_avis, suivis: total_suivis } },
+            comments: commentsDb, favorites: formattedFavorites, impact: { month: "MARS 2026", albumsRated: total_avis, musicCommented: total_avis, likesReceived: total_likes }, page: 'profil'
         });
-
-    } catch (e) {
-        console.error(e);
-        res.status(500).send("Erreur de chargement du profil");
-    }
+    } catch (e) { res.status(500).send("Erreur de chargement du profil"); }
 });
 
-// API : Modifier le profil (AVEC UPLOAD AVATAR ET GESTION MOT DE PASSE)
+
+// API : MODIFIER LE PROFIL (AVATAR + NETTOYAGE MAIL + BCRYPT PASSWORD)
 app.post('/api/profil/edit', upload.single('avatar'), async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Non connecté" });
     try {
         const { pseudo, email, bio, password } = req.body;
         const userId = req.session.user.id;
         
-        // 1. Empêcher les espaces dans l'email côté serveur
+        // Sécurité : pas d'espaces dans l'email
         const cleanEmail = email.replace(/\s+/g, '');
 
-        // 2. Si l'utilisateur a envoyé un fichier, on enregistre son chemin
+        let updateQuery = "UPDATE users SET pseudo = ?, email = ?, bio = ? WHERE id = ?";
+        let queryParams = [pseudo, cleanEmail, bio, userId];
+
+        // Si une nouvelle photo est envoyée
         if (req.file) {
             const avatarPath = '/images/' + req.file.filename;
             await db.query("UPDATE users SET avatar = ? WHERE id = ?", [avatarPath, userId]);
             req.session.user.avatar = avatarPath;
         }
 
-        // 3. Mise à jour Pseudo, Email, Bio
-        let updateQuery = "UPDATE users SET pseudo = ?, email = ?, bio = ? WHERE id = ?";
-        let queryParams = [pseudo, cleanEmail, bio, userId];
-
-        // 4. Si l'utilisateur a rempli le champ mot de passe, on le hash et on le met à jour !
+        // Si un nouveau mot de passe est saisi
         if (password && password.trim() !== "") {
             const hashedPassword = await bcrypt.hash(password, 10);
             updateQuery = "UPDATE users SET pseudo = ?, email = ?, bio = ?, password = ? WHERE id = ?";
@@ -571,7 +532,7 @@ app.post('/api/profil/edit', upload.single('avatar'), async (req, res) => {
 
         res.json({ success: true });
     } catch (e) {
-        res.status(500).json({ error: "Erreur : Cet email ou ce pseudo est peut-être déjà pris." });
+        res.status(500).json({ error: "Erreur : Ce pseudo ou cet email est peut-être déjà utilisé." });
     }
 });
 
