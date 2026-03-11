@@ -12,6 +12,13 @@
       <p>Rejoignez la communauté et partagez vos pépites.</p>
     </div>
 
+    {% if error %}
+      <div style="background-color: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 12px; border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 8px; margin-bottom: 20px; font-size: 14px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <i data-lucide="alert-circle" style="width: 18px; height: 18px;"></i>
+        {{ error }}
+      </div>
+    {% endif %}
+
     <form class="login-form" action="/register" method="POST">
 
       <div class="input-group">
@@ -42,7 +49,7 @@
 
     </form>
 
-    <a href="/connexion" class="register-link">Déjà un compte ? Se connecter</a>
+    <a href="/login" class="register-link" style="display: block; text-align: center; margin-top: 20px; color: #a1a1aa; text-decoration: none;">Déjà un compte ? Se connecter</a>
   </div>
 
 </div>
