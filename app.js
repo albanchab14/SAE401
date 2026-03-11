@@ -429,15 +429,3 @@ app.get('/logout', (req, res) => {
     res.redirect('/'); // On renvoie vers l'accueil
 });
 
-
-// ==========================================
-// ROUTES : AUTHENTIFICATION
-// ==========================================
-app.get('/inscription', (req, res) => {
-    res.render('register.njk', { page: 'inscription' });
-});
-
-app.get('/connexion', (req, res) => {
-    // C'est cette route qui te manquait pour faire marcher /connexion !
-    res.render('login.njk', { page: 'connexion' });
-});
