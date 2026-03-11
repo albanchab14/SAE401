@@ -535,3 +535,31 @@ body {
 .btn-details-dark { background: #18181b; color: white; border: 1px solid #27272a; padding: 10px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; }
 
 .tech-item { margin-bottom: 10px; font-size: 14px; color: var(--text-main); }
+
+
+    .btn-share-figma {
+        background: rgba(24, 24, 27, 0.4); /* Fond sombre transparent */
+        border: 1px solid rgba(63, 63, 71, 0.8); /* Bordure fine grise */
+        color: #f4f4f5;
+        padding: 8px 20px;
+        border-radius: 12px;
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        backdrop-filter: blur(8px); /* Effet flou sous le bouton */
+    }
+
+    .btn-share-figma:hover {
+        background: rgba(39, 39, 42, 0.6);
+        border-color: #e12afb; /* Lueur violette au survol */
+        transform: translateY(-2px);
+    }
+
+    .btn-share-figma i {
+        color: #f4f4f5;
+    }

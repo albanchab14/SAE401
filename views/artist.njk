@@ -3,26 +3,39 @@
 {% block content %}
 <div class="page-content">
     
-    <div class="artist-header" style="position: relative; margin-bottom: 60px;">
-        <div style="position: absolute; top: -40px; left: -40px; right: -40px; height: 350px; overflow: hidden; z-index: 0; border-radius: 40px;">
-            <img src="{{ artist.image }}" style="width: 100%; height: 100%; object-fit: cover; filter: blur(60px) brightness(0.3);">
-        </div>
+<div class="artist-header" style="position: relative; margin-bottom: 60px; min-height: 380px; display: flex; align-items: flex-end; border-radius: 40px; overflow: hidden; background: #09090b;">
+    
+    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0;">
+        <img src="{{ artist.image }}" style="width: 100%; height: 100%; object-fit: cover; filter: brightness(0.25) saturate(1.2);">
+        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, rgba(9,9,11,1) 0%, rgba(9,9,11,0.4) 100%);"></div>
+    </div>
 
-<div style="width: 260px; height: 260px; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.6);">
-    <img src="{{ artist.image }}" alt="{{ artist.name }}" 
-         style="width: 100%; height: 100%; object-fit: cover;"
-         onerror="this.src='https://ui-avatars.com/api/?name={{ artist.name | urlencode }}&background=d946ef&color=fff&size=300'">
-</div>
-            <div style="padding-bottom: 20px;">
-                <h1 style="font-size: 80px; font-weight: 800; line-height: 1; margin-bottom: 15px;">{{ artist.name }}</h1>
-                <div style="display: flex; gap: 24px; color: var(--text-muted); font-size: 1.1rem;">
-                    <span><i data-lucide="users" style="width:18px; vertical-align:text-bottom;"></i> {{ artist.listeners }} auditeurs</span>
-                    <span>•</span>
-                    <span><i data-lucide="disc" style="width:18px; vertical-align:text-bottom;"></i> {{ artist.albums.length }}+ albums</span>
-                </div>
+    <div style="position: relative; z-index: 1; display: flex; align-items: flex-end; gap: 40px; padding: 40px; width: 100%;">
+        
+        <div style="width: 240px; height: 240px; border-radius: 28px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.6); flex-shrink: 0; border: 1px solid rgba(255,255,255,0.1);">
+            <img src="{{ artist.image }}" alt="{{ artist.name }}" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+        
+        <div style="padding-bottom: 10px;">
+            <h1 style="font-size: 72px; font-weight: 800; line-height: 1; margin-bottom: 15px; color: #f4f4f5; letter-spacing: -2px;">{{ artist.name }}</h1>
+            
+            <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 25px;">
+                <span style="display: flex; align-items: center; gap: 8px; color: #a1a1aa; font-weight: 600; font-size: 15px;">
+                    <i data-lucide="users" style="width:18px; color: #e12afb;"></i> {{ artist.listeners }} auditeurs
+                </span>
+                <span style="color: #3f3f46;">•</span>
+                <span style="display: flex; align-items: center; gap: 8px; color: #a1a1aa; font-weight: 600; font-size: 15px;">
+                    <i data-lucide="music" style="width:18px; color: #e12afb;"></i> {{ artist.totalAlbums }} albums                </span>
             </div>
+
+            <button onclick="shareArtist()" class="btn-share-figma">
+                <i data-lucide="share-2" style="width: 16px;"></i>
+                Partager
+            </button>
         </div>
     </div>
+</div>
+
 
     <div style="display: flex; gap: 48px;">
         <div style="flex: 2;">
@@ -80,4 +93,32 @@
         </div>
     </div>
 </div>
+
+
+<script>
+function shareArtist() {
+    // On récupère l'URL actuelle
+    const url = window.location.href;
+    
+    // On essaie de copier dans le presse-papier
+    navigator.clipboard.writeText(url).then(() => {
+        // Animation visuelle du bouton pour confirmer la copie
+        const btn = document.querySelector('.btn-share-figma');
+        const originalContent = btn.innerHTML;
+        
+        btn.innerHTML = '<i data-lucide="check" style="width: 16px; color: #4ade80;"></i> Copié !';
+        lucide.createIcons(); // Pour afficher l'icône de validation
+        
+        // On remet le bouton normal après 2 secondes
+        setTimeout(() => {
+            btn.innerHTML = originalContent;
+            lucide.createIcons();
+        }, 2000);
+    }).catch(err => {
+        console.error('Erreur lors de la copie : ', err);
+        alert("Lien copié : " + url); // Fallback si le navigateur bloque la copie
+    });
+}
+</script>
+
 {% endblock %}
