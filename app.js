@@ -2,6 +2,8 @@ const express = require('express');
 const nunjucks = require('nunjucks');
 const path = require('path');
 const axios = require('axios');
+const session = require('express-session');
+const db = require('./src/config/database'); // On importe notre connexion MySQL !
 require('dotenv').config();
 
 const app = express();
@@ -14,6 +16,21 @@ nunjucks.configure('views', {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+// Permet de lire les données envoyées par les formulaires HTML (POST)
+app.use(express.urlencoded({ extended: true }));
+
+// Configuration des Sessions (Le bracelet VIP)
+app.use(session({
+    secret: 'bpm_super_secret_key', // Une clé secrète pour crypter le cookie
+    resave: false,
+    saveUninitialized: false
+}));
+
+// MIDDLEWARE MAGIQUE ✨ : Rend la variable "user" accessible dans TOUS les fichiers .njk
+app.use((req, res, next) => {
+    res.locals.user = req.session.user || null;
+    next();
+});
 
 // ==========================================
 // ROUTE 1 : ACCUEIL
@@ -301,6 +318,81 @@ app.get('/album/:artist/:album', async (req, res) => {
     }
 });
 
+// ==========================================
+// ROUTES : AUTHENTIFICATION (Login / Register / Logout)
+// ==========================================
+
+// 1. Afficher la page de connexion
+app.get('/login', (req, res) => {
+    res.render('login.njk', { page: 'login' });
+});
+
+// Recevoir les données de connexion
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        
+        // Erreur 1 : L'email n'existe pas
+        if (users.length === 0) {
+            return res.render('login.njk', { 
+                page: 'login', 
+                error: "Aucun compte n'est associé à cette adresse email. Veuillez réessayer ou vous inscrire." 
+            });
+        }
+
+        const user = users[0];
+
+        // Erreur 2 : Le mot de passe est faux
+        if (password === user.password) {
+            req.session.user = {
+                id: user.id,
+                pseudo: user.pseudo,
+                role: user.role,
+                avatar: user.avatar
+            };
+            res.redirect('/');
+        } else {
+            return res.render('login.njk', { 
+                page: 'login', 
+                error: "Le mot de passe est incorrect." 
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.render('login.njk', { 
+            page: 'login', 
+            error: "Erreur serveur. Veuillez réessayer plus tard." 
+        });
+    }
+});
+
+// Le vrai code de Déconnexion
+app.get('/logout', (req, res) => {
+    req.session.destroy(); // On déchire le bracelet VIP
+    res.redirect('/'); // Retour à l'accueil
+});
+
+// 3. Afficher la page d'inscription
+app.get('/register', (req, res) => {
+    res.render('register.njk', { page: 'register' });
+});
+
+// 4. Recevoir les données d'inscription (Quand on clique sur "Créer mon compte")
+app.post('/register', (req, res) => {
+    const { pseudo, email, password } = req.body;
+    console.log("👉 Nouvel utilisateur ! Pseudo:", pseudo, "Email:", email);
+    
+    // TODO : Ici, on fera la requête SQL pour insérer le nouvel utilisateur.
+    res.send("Formulaire d'inscription reçu ! Regarde ton terminal Node.js.");
+});
+
+// 5. Se déconnecter
+app.get('/logout', (req, res) => {
+    // TODO : Plus tard, on détruira la session ici.
+    res.redirect('/'); // On renvoie vers l'accueil
+});
 
 // ==========================================
 // DÉMARRAGE DU SERVEUR (NE PAS OUBLIER !)

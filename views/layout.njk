@@ -22,20 +22,41 @@
       <a href="/search" class="nav-link {% if page == 'explorer' %}active{% endif %}">
         <i data-lucide="compass"></i> Explorer
       </a>
-      <a href="/profil" class="nav-link">
+
+      {% if user %}
+      <a href="/profil" class="nav-link {% if page == 'profil' %}active{% endif %}">
         <i data-lucide="user"></i> Profil
       </a>
-      <a href="/admin" class="nav-link">
+      {% endif %}
+
+      {% if user and user.role == 'admin' %}
+      <a href="/admin" class="nav-link {% if page == 'admin' %}active{% endif %}">
         <i data-lucide="settings"></i> Admin
       </a>
+      {% endif %}
     </nav>
 
     <div class="user-profile">
-      <img src="/images/image-user-161.png" alt="User" onerror="this.src='https://ui-avatars.com/api/?name=Alex+M&background=random'">
-      <div class="user-info">
-        <span class="user-name">Alex M.</span>
-        <a href="/connexion" class="logout-btn">Déconnexion</a>
-      </div>
+      {% if user %}
+        <img 
+          src="{{ user.avatar if user.avatar else 'https://ui-avatars.com/api/?name=' + user.pseudo + '&background=random' }}" 
+          alt="Avatar de {{ user.pseudo }}"
+        >
+        <div class="user-info">
+          <span class="user-name">{{ user.pseudo }}</span>
+          <a href="/logout" class="logout-btn" style="color: #ef4444; transition: color 0.3s;">Déconnexion</a>
+        </div>
+
+      {% else %}
+        <div class="user-info" style="width: 100%; text-align: center;">
+          <a href="/login" style="display: block; margin-bottom: 8px; text-decoration: none; padding: 10px; border-radius: 8px; background-color: #d946ef; color: white; font-weight: bold; font-size: 14px;">
+            Se connecter
+          </a>
+          <a href="/register" style="color: #a0a0a0; font-size: 12px; text-decoration: none;">
+            S'inscrire
+          </a>
+        </div>
+      {% endif %}
     </div>
   </aside>
 

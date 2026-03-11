@@ -12,6 +12,13 @@
       <p>Connectez-vous pour retrouver vos favoris BPM.</p>
     </div>
 
+    {% if error %}
+      <div style="background-color: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 12px; border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 8px; margin-bottom: 20px; font-size: 14px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <i data-lucide="alert-circle" style="width: 18px; height: 18px;"></i>
+        {{ error }}
+      </div>
+    {% endif %}
+    
     <form class="login-form" action="/login" method="POST">
       
       <div class="input-group">
