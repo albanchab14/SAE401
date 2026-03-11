@@ -37,11 +37,19 @@ app.get('/', async (req, res) => {
         const API_KEY = process.env.LASTFM_API_KEY;
         const respArt = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=chart.gettopartists&api_key=${API_KEY}&format=json&limit=6`);
         
-        const topArtists = await Promise.all(respArt.data.artists.artist.map(async a => ({
-            name: a.name,
-            listeners: parseInt(a.listeners).toLocaleString('fr-FR'),
-            image: await getRealArtistImage(a.name) // Le patch photo
-        })));
+const topArtists = await Promise.all(respArt.data.artists.artist.map(async a => {
+            let listenerCount = parseInt(a.listeners);
+            // Si on a plus d'1 million, on divise par 1 million et on ajoute "M" (ex: 84.2M)
+            let formattedListeners = listenerCount >= 1000000 
+                ? (listenerCount / 1000000).toFixed(1) + "M" 
+                : listenerCount.toLocaleString('fr-FR'); // Sinon format normal (ex: 850 000)
+
+            return {
+                name: a.name,
+                listeners: formattedListeners,
+                image: await getRealArtistImage(a.name) // Le patch photo HD
+            };
+        }));
 
         const randomPage = Math.floor(Math.random() * 50) + 1;
         const respMatch = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=rj&api_key=${API_KEY}&format=json&limit=10&page=${randomPage}`);
@@ -326,4 +334,18 @@ app.get('/notifications', (req, res) => {
     */
 
     res.render('notifications.njk', { notifications, page: 'notifications' });
+});
+
+
+
+// ==========================================
+// ROUTES : AUTHENTIFICATION
+// ==========================================
+app.get('/inscription', (req, res) => {
+    res.render('register.njk', { page: 'inscription' });
+});
+
+app.get('/connexion', (req, res) => {
+    // C'est cette route qui te manquait pour faire marcher /connexion !
+    res.render('login.njk', { page: 'connexion' });
 });

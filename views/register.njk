@@ -2,16 +2,25 @@
 
 {% block content %}
 <div class="login-container">
+
   <div class="login-box">
     <div class="login-header">
       <div class="auth-icon-glow">
-        <i data-lucide="user" style="color: white; width: 32px; height: 32px;"></i>
+        <i data-lucide="music" style="color: white; width: 32px; height: 32px;"></i>
       </div>
-      <h2>Bon retour !</h2>
-      <p>Connectez-vous pour retrouver vos pépites.</p>
+      <h2>Créer un compte</h2>
+      <p>Rejoignez la communauté et partagez vos pépites.</p>
     </div>
 
-    <form class="login-form" action="/login" method="POST">
+    <form class="login-form" action="/register" method="POST">
+
+      <div class="input-group">
+        <div class="input-wrapper">
+          <i data-lucide="user" class="input-icon"></i>
+          <input type="text" name="username" placeholder="Nom d'utilisateur" required>
+        </div>
+      </div>
+
       <div class="input-group">
         <div class="input-wrapper">
           <i data-lucide="mail" class="input-icon"></i>
@@ -28,12 +37,12 @@
       </div>
 
       <button type="submit" class="btn-submit-purple">
-        Se connecter <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
+        S'inscrire <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
       </button>
 
     </form>
 
-    <a href="/inscription" class="register-link" style="display: block; text-align: center; margin-top: 20px; color: #a1a1aa; text-decoration: none;">Pas encore de compte ? S'inscrire</a>
+    <a href="/connexion" class="register-link">Déjà un compte ? Se connecter</a>
   </div>
 
 </div>
