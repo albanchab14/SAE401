@@ -83,7 +83,11 @@
       <div class="header-right" style="display: flex; justify-content: flex-end;">
         <div class="notifications" style="position: relative; cursor: pointer;" onclick="window.location.href='/notifications'">
           <i data-lucide="bell" style="width: 24px; color: white;"></i>
+          
+          {% if unreadNotifs > 0 %}
           <span style="position: absolute; top: -2px; right: 2px; width: 8px; height: 8px; background-color: #d946ef; border-radius: 50%;"></span>
+          {% endif %}
+          
         </div>
       </div>
     </header>

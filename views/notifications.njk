@@ -218,7 +218,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.style.opacity = '0';
                 card.style.transform = 'translateX(20px)';
                 card.style.transition = 'all 0.3s ease';
-                setTimeout(() => card.remove(), 300); // Supprime le HTML après l'animation
+                
+                setTimeout(() => {
+                    card.remove(); // Supprime le HTML après l'animation
+                    
+                    // ✨ NOUVEAU : On compte combien il reste de notifications à l'écran
+                    const remainingCards = document.querySelectorAll('.notif-card');
+                    
+                    if (remainingCards.length === 0) {
+                        // S'il n'y en a plus, on affiche le design vide et on cache le bouton "Tout supprimer"
+                        const notifList = document.querySelector('.notifications-list');
+                        const markAllBtn = document.querySelector('.mark-read-btn');
+                        if (markAllBtn) markAllBtn.style.display = 'none';
+
+                        notifList.innerHTML = `
+                            <div class="empty-state" style="opacity: 0; transition: opacity 0.3s ease;">
+                                <i data-lucide="bell-off" class="empty-icon"></i>
+                                <h2>Aucune notification</h2>
+                                <p>Vous êtes à jour ! Vos notifications apparaîtront ici quand vous en recevrez.</p>
+                            </div>
+                        `;
+                        
+                        // Petite animation pour faire apparaître le message doucement
+                        setTimeout(() => {
+                            notifList.querySelector('.empty-state').style.opacity = '1';
+                            lucide.createIcons(); // On recharge l'icône bell-off
+                        }, 50);
+                    }
+                }, 300); 
             }
         });
     });
