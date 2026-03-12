@@ -3,8 +3,14 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const db = require('../src/config/database');
 
-router.get('/login', (req, res) => res.render('login.njk', { page: 'login' }));
-router.get('/register', (req, res) => res.render('register.njk', { page: 'register' }));
+router.get('/login', (req, res) => {
+    if (req.session.user) return res.redirect('/'); // Renvoie à l'accueil si connecté
+    res.render('login.njk', { page: 'login' });
+});
+router.get('/register', (req, res) => {
+    if (req.session.user) return res.redirect('/'); // Renvoie à l'accueil si connecté
+    res.render('register.njk', { page: 'register' });
+});
 router.get('/connexion', (req, res) => res.redirect('/login'));
 router.get('/inscription', (req, res) => res.redirect('/register'));
 

@@ -342,9 +342,23 @@ router.get('/notifications', async (req, res) => {
 
         const notifications = rawNotifications.map(n => {
             let icon, color, bgColor, actionText;
+            
             if (n.type === 'like') {
                 icon = 'heart'; color = '#e12afb'; bgColor = 'rgba(225, 42, 251, 0.1)';
-                actionText = `a aimé votre commentaire sur <a href="/album/${encodeURIComponent(n.reference)}" class="notif-link">${n.reference}</a>`;
+                
+                // ✨ LOGIQUE DE LIEN INTELLIGENTE
+                let refName = n.reference || "un élément";
+                let refUrl = `/search?q=${encodeURIComponent(refName)}`; // Par défaut, on cherche !
+                
+                // Si c'est un album (format "Artiste::Album")
+                if (n.reference && n.reference.includes('::')) {
+                    let parts = n.reference.split('::');
+                    refName = parts[1]; // On n'affiche que le nom de l'album
+                    refUrl = `/album/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`;
+                }
+                
+                actionText = `a aimé votre commentaire sur <a href="${refUrl}" class="notif-link">${refName}</a>`;
+                
             } else if (n.type === 'follow') {
                 icon = 'user-plus'; color = '#3b82f6'; bgColor = 'rgba(59, 130, 246, 0.1)';
                 actionText = 'a commencé à vous suivre';
@@ -352,6 +366,7 @@ router.get('/notifications', async (req, res) => {
                 icon = 'star'; color = '#eab308'; bgColor = 'rgba(234, 179, 8, 0.1)';
                 actionText = `a noté 5 étoiles un album que vous avez aimé`; 
             }
+            
             return {
                 id: n.id, type: n.type, icon: icon, color: color, bgColor: bgColor,
                 user: n.actor_pseudo, action: actionText, is_read: n.is_read, time: timeAgo(n.date_creation) 

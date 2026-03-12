@@ -55,17 +55,28 @@
 
                 <div style="display: flex; gap: 16px; color: #71717b; align-items: center;">
                     {% if user and user.id == c.user_id %}
-                        <button onclick="openEditModal({{ c.id }}, {{ c.note }})" style="background: none; border: none; color: inherit; cursor: pointer;" title="Modifier mon avis"><i data-lucide="edit-2" style="width: 18px; height: 18px;"></i></button>
-                        <button onclick="deleteOwnComment({{ c.id }})" style="background: none; border: none; color: #ff2056; cursor: pointer;" title="Supprimer mon avis"><i data-lucide="trash-2" style="width: 18px; height: 18px;"></i></button>
-                    {% endif %}
+                        <button onclick="openEditModal({{ c.id }}, {{ c.note }})" style="background: none; border: none; color: inherit; cursor: pointer;" title="Modifier mon avis">
+                            <i data-lucide="edit-2" style="width: 18px; height: 18px;"></i>
+                        </button>
+                        <button onclick="deleteOwnComment({{ c.id }})" style="background: none; border: none; color: #ff2056; cursor: pointer;" title="Supprimer mon avis">
+                            <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
+                        </button>
+                        
+                        <div style="display: flex; align-items: center; gap: 6px; margin-left: 8px;">
+                            <i data-lucide="thumbs-up" style="width: 18px; height: 18px; color: #d946ef;"></i> 
+                            <span style="font-size: 14px; color: white; font-weight: bold;">{{ c.total_likes }}</span>
+                        </div>
 
-                    <button onclick="likeComment({{ c.id }}, this)" style="background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-left: 8px;">
-                        <i data-lucide="thumbs-up" class="{% if c.user_liked %}liked{% endif %}" style="width: 18px; height: 18px; {% if c.user_liked %}fill: #d946ef; color: #d946ef;{% endif %}"></i> 
-                        <span class="like-count" style="font-size: 14px;">{{ c.total_likes }}</span>
-                    </button>
-                    <button onclick="openReportModal({{ c.id }}, '{{ c.pseudo }}')" style="background: none; border: none; color: inherit; cursor: pointer;" title="Signaler ce commentaire">
-                        <i data-lucide="flag" style="width: 18px; height: 18px;"></i>
-                    </button>
+                    {% else %}
+                        <button onclick="likeComment({{ c.id }}, this)" style="background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-left: 8px;">
+                            <i data-lucide="thumbs-up" class="{% if c.user_liked %}liked{% endif %}" style="width: 18px; height: 18px; {% if c.user_liked %}fill: #d946ef; color: #d946ef;{% endif %}"></i> 
+                            <span class="like-count" style="font-size: 14px;">{{ c.total_likes }}</span>
+                        </button>
+                        
+                        <button onclick="openReportModal({{ c.id }}, '{{ c.pseudo }}')" style="background: none; border: none; color: inherit; cursor: pointer;" title="Signaler ce commentaire">
+                            <i data-lucide="flag" style="width: 18px; height: 18px;"></i>
+                        </button>
+                    {% endif %}
                 </div>
             </div>
             <p id="comment-content-{{ c.id }}" style="color: #d4d4d8; line-height: 1.6; margin: 0; font-size: 15px;">{{ c.commentaire }}</p>

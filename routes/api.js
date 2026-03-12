@@ -224,13 +224,31 @@ router.post('/user/:id/follow', async (req, res) => {
     try {
         const [exist] = await db.query("SELECT * FROM follows WHERE follower_id = ? AND following_id = ?", [followerId, followingId]);
         if (exist.length > 0) {
+            // Désabonnement
             await db.query("DELETE FROM follows WHERE follower_id = ? AND following_id = ?", [followerId, followingId]);
             res.json({ isFollowing: false });
         } else {
+            // Abonnement
             await db.query("INSERT INTO follows (follower_id, following_id) VALUES (?, ?)", [followerId, followingId]);
+            
+            // ✨ LE TEST DE NOTIFICATION ✨
+            try {
+                // J'ai rajouté "reference" avec la valeur NULL pour éviter les bugs SQL
+                await db.query(`
+                    INSERT INTO notifications (user_id, actor_id, type, reference, date_creation) 
+                    VALUES (?, ?, 'follow', NULL, ?)
+                `, [followingId, followerId, new Date()]);
+                console.log("✅ Notification de follow insérée dans la BDD avec succès !");
+            } catch (notifError) {
+                console.error("❌ Erreur SQL lors de la notification :", notifError.message);
+            }
+            
             res.json({ isFollowing: true });
         }
-    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+    } catch (e) { 
+        console.error("Erreur globale Follow:", e);
+        res.status(500).json({ error: "Erreur BDD" }); 
+    }
 });
 
 // --- API ADMIN : GESTION DU SITE ---

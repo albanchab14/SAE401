@@ -65,9 +65,11 @@
     <header class="top-header" style="display: grid; grid-template-columns: 1fr 2fr 1fr; align-items: center; padding: 0 40px; height: 80px; background-color: var(--bg-dark); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1000;">
       
       <div class="header-left">
+        {% if page != 'home' %}
         <button onclick="history.back()" style="background: none; border: none; cursor: pointer; color: var(--text-muted); display: flex; align-items: center;">
           <i data-lucide="chevron-left" style="width: 28px; height: 28px;"></i>
         </button>
+        {% endif %}
       </div>
 
       <div class="header-center" style="display: flex; justify-content: center; position: relative;">
@@ -135,6 +137,13 @@
     });
 
     document.addEventListener('click', (e) => { if (!input.contains(e.target)) suggBox.style.display = 'none'; });
+
+    // FORCE LE RAFRAÎCHISSEMENT SI ON UTILISE LA FLÈCHE RETOUR
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    });
   </script>
 </body>
 </html>
