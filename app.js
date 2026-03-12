@@ -164,29 +164,46 @@ app.get('/', async (req, res) => {
         let topArtists = [];
         
         for (let a of dbArtists) {
-            let listenersFormatted = "0";
+            let listeners = "0M";
             try {
                 const infoResp = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(a.api_artist_id)}&api_key=${API_KEY}&format=json`);
                 if (infoResp.data.artist) {
-                    listenersFormatted = formatNumber(infoResp.data.artist.stats.listeners);
+                    let lst = parseInt(infoResp.data.artist.stats.listeners);
+                    listeners = lst >= 1000000 ? (lst / 1000000).toFixed(1) + "M" : lst.toLocaleString('fr-FR');
                 }
-            } catch(e) {}
+            } catch (errInner) { 
+                console.log(`⚠️ Impossible de charger les stats de ${a.api_artist_id}`);
+            }
             
             topArtists.push({
-                name: a.api_artist_id, listeners: listenersFormatted, image: await getRealArtistImage(a.api_artist_id),
+                name: a.api_artist_id, 
+                listeners: listeners, 
+                image: await getRealArtistImage(a.api_artist_id),
                 accroche: a.accroche || `Découvrez l'univers de ${a.api_artist_id}.`
             });
         }
 
         const heroArtist = topArtists.length > 0 ? topArtists[0] : null;
-        const randomPage = Math.floor(Math.random() * 50) + 1;
-        const respMatch = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=rj&api_key=${API_KEY}&format=json&limit=10&page=${randomPage}`);
-        const initialMatch = respMatch.data.topalbums.album.sort(() => 0.5 - Math.random()).slice(0, 3).map(alb => ({
-            title: alb.name, artist: alb.artist.name, image: alb.image[3]['#text'] || "https://via.placeholder.com/300"
-        }));
+        
+        // ✨ LE BOUCLIER EST ICI : On protège la requête Last.fm capricieuse
+        let initialMatch = [];
+        try {
+            const randomPage = Math.floor(Math.random() * 50) + 1;
+            const respMatch = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=rj&api_key=${API_KEY}&format=json&limit=10&page=${randomPage}`);
+            
+            initialMatch = respMatch.data.topalbums.album.sort(() => 0.5 - Math.random()).slice(0, 3).map(alb => ({
+                title: alb.name, artist: alb.artist.name, image: alb.image[3]['#text'] || "https://via.placeholder.com/300"
+            }));
+        } catch (matchError) {
+            console.log("⚠️ L'API Last.fm a planté pour les suggestions, on affiche l'accueil sans elles.");
+        }
 
         res.render('index.njk', { topArtists, heroArtist, initialMatch, page: 'home' });
-    } catch (e) { res.status(500).send("Erreur Accueil"); }
+        
+    } catch (e) { 
+        console.error("🚨 ERREUR FATALE SUR L'ACCUEIL :", e);
+        res.status(500).send(`<h1 style="color:white; background:red; padding:20px;">ERREUR : ${e.message}</h1>`); 
+    }
 });
 
 app.get('/search', async (req, res) => {
