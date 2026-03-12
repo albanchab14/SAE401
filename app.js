@@ -60,8 +60,23 @@ app.use(async (req, res, next) => {
     } catch (e) { next(); }
 });
 
-app.use((req, res, next) => {
+// MIDDLEWARE GLOBAL : Variables accessibles sur TOUTES les pages
+app.use(async (req, res, next) => {
     res.locals.user = req.session.user || null;
+    res.locals.unreadNotifs = 0; // Par défaut, 0 notification
+
+    // Si le mec est connecté, on compte ses notifications non lues
+    if (req.session.user) {
+        try {
+            const [[{ count }]] = await db.query(
+                'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0', 
+                [req.session.user.id]
+            );
+            res.locals.unreadNotifs = count;
+        } catch (e) {
+            console.error("Erreur compteur notifs:", e);
+        }
+    }
     next();
 });
 
