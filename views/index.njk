@@ -13,8 +13,9 @@
         ARTISTE À LA UNE
       </div>
 
-      <h1>{{ heroArtist.name }}</h1>
-      <p>{{ heroArtist.accroche }}</p>
+      <h1 style="margin: 0 0 16px 0;">{{ heroArtist.name }}</h1>
+      <p style="margin: 0 0 16px 0; max-width: 600px; line-height: 1.5;">{{ heroArtist.accroche }}</p>
+      
       <div>
         <a href="/artiste/{{ heroArtist.name | urlencode }}" class="btn">
           Voir les détails
