@@ -67,12 +67,14 @@
             <div class="card-img-wrapper" style="{% if item.type == 'Artiste' %}border-radius: 50%; aspect-ratio: 1/1; overflow: hidden;{% endif %}">
               <img src="{{ item.image }}" alt="{{ item.title }}" 
                    onerror="this.src='https://ui-avatars.com/api/?name={{ item.title | urlencode }}&background=random&size=300'">
-              {% if item.type != "Artiste" %}
+              
+              {% if item.rating and item.rating > 0 %}
               <div class="rating-badge">
                 <i data-lucide="star" style="width: 12px; fill: #eab308; color: #eab308;"></i>
-                {{ (range(40, 50) | random) / 10 }}
+                {{ item.rating }}
               </div>
               {% endif %}
+
             </div>
             <h3>{{ item.title }}</h3>
             <p>{{ item.artist }}</p>

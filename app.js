@@ -100,6 +100,18 @@ function timeAgo(date) {
     return "À l'instant";
 }
 
+// FORMATAGE INTELLIGENT DES NOMBRES
+function formatNumber(numStr) {
+    let num = parseInt(numStr, 10);
+    if (isNaN(num)) return "0";
+    if (num >= 1000000) {
+        // Ex: 1 300 000 devient "1,3 M"
+        return (num / 1000000).toFixed(1).replace('.', ',') + " M";
+    }
+    // Ex: 422 535 reste tel quel avec les espaces
+    return num.toLocaleString('fr-FR');
+}
+
 async function getItemComments(itemId, itemType, userId) {
     try {
         const [comments] = await db.query(`
@@ -117,6 +129,30 @@ async function getItemComments(itemId, itemType, userId) {
     } catch (e) { return []; }
 }
 
+function getRatingStats(comments) {
+    let total = comments.length;
+    if (total === 0) return { avg: 0, counts: {1:0, 2:0, 3:0, 4:0, 5:0}, pct: {1:0, 2:0, 3:0, 4:0, 5:0}, total: 0 };
+    
+    let sum = 0;
+    let counts = {1:0, 2:0, 3:0, 4:0, 5:0};
+    
+    comments.forEach(c => {
+        let n = parseInt(c.note) || 0;
+        if (n >= 1 && n <= 5) { counts[n]++; sum += n; }
+    });
+    
+    let avg = (sum / total).toFixed(1);
+    let pct = {
+        5: total > 0 ? Math.round((counts[5]/total)*100) : 0,
+        4: total > 0 ? Math.round((counts[4]/total)*100) : 0,
+        3: total > 0 ? Math.round((counts[3]/total)*100) : 0,
+        2: total > 0 ? Math.round((counts[2]/total)*100) : 0,
+        1: total > 0 ? Math.round((counts[1]/total)*100) : 0
+    };
+    
+    return { avg, counts, pct, total };
+}
+
 // ==========================================
 // ROUTES PUBLIQUES
 // ==========================================
@@ -128,17 +164,16 @@ app.get('/', async (req, res) => {
         let topArtists = [];
         
         for (let a of dbArtists) {
-            let listeners = "0M";
+            let listenersFormatted = "0";
             try {
                 const infoResp = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(a.api_artist_id)}&api_key=${API_KEY}&format=json`);
                 if (infoResp.data.artist) {
-                    let lst = parseInt(infoResp.data.artist.stats.listeners);
-                    listeners = lst >= 1000000 ? (lst / 1000000).toFixed(1) + "M" : lst.toLocaleString('fr-FR');
+                    listenersFormatted = formatNumber(infoResp.data.artist.stats.listeners);
                 }
             } catch(e) {}
             
             topArtists.push({
-                name: a.api_artist_id, listeners: listeners, image: await getRealArtistImage(a.api_artist_id),
+                name: a.api_artist_id, listeners: listenersFormatted, image: await getRealArtistImage(a.api_artist_id),
                 accroche: a.accroche || `Découvrez l'univers de ${a.api_artist_id}.`
             });
         }
@@ -172,21 +207,39 @@ app.get('/search', async (req, res) => {
                     if ((n.includes('&') || n.includes(' feat')) && !sq.includes('&')) return false;
                     return true;
                 });
-                results = rawArtists.map(a => {
+                
+                results = await Promise.all(rawArtists.map(async a => {
                     let img = a.picture_xl;
                     if (!img || img.includes('/images/artist//')) img = `https://ui-avatars.com/api/?name=${encodeURIComponent(a.name)}&background=d946ef&color=fff&size=300`;
-                    return { title: a.name, artist: "Artiste", image: img, type: "Artiste", year: years || "2024" };
-                });
+                    
+                    let rating = null;
+                    try {
+                        const [avgRow] = await db.query("SELECT AVG(note) as avgNote FROM commentaires WHERE music_item_id = ? AND item_type = 'artist'", [a.name]);
+                        if(avgRow[0].avgNote) rating = parseFloat(avgRow[0].avgNote).toFixed(1);
+                    } catch(e) {}
+
+                    return { title: a.name, artist: "Artiste", image: img, type: "Artiste", year: years || "2024", rating: rating };
+                }));
             } else {
                 let method = currentType === "Musique" ? "track.search&track=" : "album.search&album=";
                 const resp = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=${method}${encodeURIComponent(searchQuery)}&api_key=${API_KEY}&format=json&limit=15`);
                 let rawResults = currentType === "Musique" ? resp.data.results.trackmatches.track : resp.data.results.albummatches.album;
                 rawResults = rawResults.filter((v, i, a) => a.findIndex(t => t.name.toLowerCase() === v.name.toLowerCase()) === i).slice(0, 15);
+                
                 results = await Promise.all(rawResults.map(async (item) => {
                     let img = item.image ? item.image[3]['#text'] : "";
                     if (currentType === "Musique" && (!img || img.includes("2a96cbd8"))) img = await getRealArtistImage(item.artist);
                     else if (!img) img = "https://via.placeholder.com/300?text=No+Cover";
-                    return { title: item.name, artist: item.artist, image: img, type: currentType, year: years || "2024" };
+                    
+                    let dbItemId = currentType === 'Album' ? `${item.artist}::${item.name}` : item.name;
+                    let dbItemType = currentType === 'Musique' ? 'track' : 'album';
+                    let rating = null;
+                    try {
+                        const [avgRow] = await db.query("SELECT AVG(note) as avgNote FROM commentaires WHERE music_item_id = ? AND item_type = ?", [dbItemId, dbItemType]);
+                        if(avgRow[0].avgNote) rating = parseFloat(avgRow[0].avgNote).toFixed(1);
+                    } catch(e) {}
+
+                    return { title: item.name, artist: item.artist, image: img, type: currentType, year: years || "2024", rating: rating };
                 }));
             }
         }
@@ -213,13 +266,15 @@ app.get('/details/:name', async (req, res) => {
         const trackData = {
             name: t.name, artist: t.artist.name, album: t.album?.title || "Single",
             image: t.album?.image[3]['#text'] || t.image?.[3]['#text'] || "https://via.placeholder.com/300",
-            duration, playcount: parseInt(t.playcount).toLocaleString('fr-FR'),
-            listeners: parseInt(t.listeners).toLocaleString('fr-FR'),
+            duration, 
+            playcount: formatNumber(t.playcount), // UTILISATION DE FORMATNUMBER
+            listeners: formatNumber(t.listeners), // UTILISATION DE FORMATNUMBER
             wiki: t.wiki?.summary || "Aucune description.", tags: t.toptags?.tag?.slice(0, 5) || [], year: "2024"
         };
 
         const userId = req.session.user ? req.session.user.id : 0;
         const comments = await getItemComments(trackName, 'track', userId);
+        const ratingStats = getRatingStats(comments);
 
         let isFavorite = false;
         if (userId) {
@@ -228,7 +283,7 @@ app.get('/details/:name', async (req, res) => {
             isFavorite = fav.length > 0;
         }
 
-        res.render('details.njk', { track: trackData, comments, itemId: trackName, itemType: 'track', isFavorite });
+        res.render('details.njk', { track: trackData, comments, ratingStats, itemId: trackName, itemType: 'track', isFavorite });
     } catch (e) { res.status(500).send("Erreur détails"); }
 });
 
@@ -277,18 +332,19 @@ app.get('/artiste/:name', async (req, res) => {
 
         const artistData = {
             name: a.name, image: finalImage,
-            listeners: parseInt(a.stats.listeners).toLocaleString('fr-FR'),
+            listeners: formatNumber(a.stats.listeners), // UTILISATION DE FORMATNUMBER
             totalAlbums: strictAlbumCount > 0 ? strictAlbumCount : albumsResp.data.topalbums.album.length,
             bio: a.bio.summary ? a.bio.summary.split('<a')[0] : "Pas de bio disponible.",
             tags: a.tags.tag.slice(0, 6),
             albums: albumsResp.data.topalbums.album.map(alb => ({ title: alb.name, image: alb.image[3]['#text'] || 'https://via.placeholder.com/150' })),
-            topTracks: tracksResp.data.toptracks.track.map((t, index) => ({ rank: index + 1, title: t.name, listeners: (parseInt(t.listeners) / 1000000).toFixed(1) + "M" }))
+            topTracks: tracksResp.data.toptracks.track.map((t, index) => ({ rank: index + 1, title: t.name, listeners: formatNumber(t.listeners) })) // UTILISATION DE FORMATNUMBER
         };
 
         const userId = req.session.user ? req.session.user.id : 0;
         const comments = await getItemComments(artistName, 'artist', userId);
+        const ratingStats = getRatingStats(comments);
 
-        res.render('artist.njk', { artist: artistData, comments, itemId: artistName, itemType: 'artist' });
+        res.render('artist.njk', { artist: artistData, comments, ratingStats, itemId: artistName, itemType: 'artist' });
     } catch (error) { res.status(500).send("Artiste introuvable"); }
 });
 
@@ -307,7 +363,17 @@ app.get('/album/:artist/:album', async (req, res) => {
             tracks = trackList.map(t => {
                 const duration = parseInt(t.duration || 0);
                 totalMs += duration;
-                return { name: t.name, duration: duration > 0 ? Math.floor(duration / 60) + ":" + (duration % 60).toString().padStart(2, '0') : "--:--", rank: t['@attr']?.rank || 1, playcount: (Math.random() * (1.5 - 0.5) + 0.5).toFixed(1) + "M" };
+                
+                // Simulation réaliste du playcount pour la piste (L'API ne le donne pas pour les albums)
+                // Cela génère un entier aléatoire (ex: 753 200) formaté correctement
+                const mockPlays = Math.floor(Math.random() * 4500000) + 150000; 
+
+                return { 
+                    name: t.name, 
+                    duration: duration > 0 ? Math.floor(duration / 60) + ":" + (duration % 60).toString().padStart(2, '0') : "--:--", 
+                    rank: t['@attr']?.rank || 1, 
+                    playcount: formatNumber(mockPlays) // UTILISATION DE FORMATNUMBER
+                };
             });
         }
         const totalHours = Math.floor(totalMs / 3600);
@@ -322,8 +388,9 @@ app.get('/album/:artist/:album', async (req, res) => {
         const itemId = `${artist}::${album}`; 
         const userId = req.session.user ? req.session.user.id : 0;
         const comments = await getItemComments(itemId, 'album', userId);
+        const ratingStats = getRatingStats(comments);
 
-        res.render('album.njk', { album: albumData, comments, itemId: itemId, itemType: 'album' });
+        res.render('album.njk', { album: albumData, comments, ratingStats, itemId: itemId, itemType: 'album' });
     } catch (error) { res.status(500).send("Erreur album"); }
 });
 
@@ -344,9 +411,9 @@ app.get('/notifications', async (req, res) => {
 
         const notifications = rawNotifications.map(n => {
             let icon, color, bgColor, actionText;
-            // On adapte le style selon le type de notif
+
             if (n.type === 'like') {
-                icon = 'thumbs-up'; color = '#e12afb'; bgColor = 'rgba(225, 42, 251, 0.1)';
+                icon = 'heart'; color = '#e12afb'; bgColor = 'rgba(225, 42, 251, 0.1)';
                 actionText = `a aimé votre commentaire sur <a href="/album/${encodeURIComponent(n.reference)}" class="notif-link">${n.reference}</a>`;
             } else if (n.type === 'follow') {
                 icon = 'user-plus'; color = '#3b82f6'; bgColor = 'rgba(59, 130, 246, 0.1)';
@@ -416,7 +483,6 @@ app.get('/profil', async (req, res) => {
             FROM commentaires c WHERE c.user_id = ? ORDER BY c.date_commentaire DESC
         `, [userId]);
 
-        // === CORRECTION DES IMAGES DE PROFIL POUR LES AVIS ===
         for (let c of commentsDb) {
             c.title = c.music_item_id; 
             c.artist = "BPM"; 
@@ -456,12 +522,10 @@ app.get('/profil', async (req, res) => {
                         if (img && !img.includes('2a96cbd8')) {
                             c.image = img;
                         } else {
-                            // Sécurité : si pas de pochette, on met la photo de l'artiste
                             c.image = await getRealArtistImage(trk.artist);
                         }
                     }
                 } 
-                // LE CORRECTIF EST ICI ! On n'avait pas géré le cas des Artistes !
                 else if (c.item_type === 'artist') {
                     c.artist = "Artiste";
                     c.title = c.music_item_id;
@@ -497,8 +561,6 @@ app.get('/profil', async (req, res) => {
     }
 });
 
-
-// API : MODIFIER LE PROFIL
 app.post('/api/profil/edit', upload.single('avatar'), async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Non connecté" });
     try {
@@ -541,7 +603,6 @@ app.delete('/api/profil/delete', async (req, res) => {
     }
 });
 
-// API DIVERSES
 app.get('/api/search-users', async (req, res) => {
     try {
         const { q } = req.query;
@@ -610,6 +671,16 @@ app.post('/api/favorites/toggle', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
 
+app.post('/api/comments', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Connectez-vous pour commenter." });
+    try {
+        const { item_id, item_type, note, commentaire } = req.body;
+        await db.query("INSERT INTO commentaires (user_id, music_item_id, item_type, note, commentaire) VALUES (?, ?, ?, ?, ?)", 
+        [req.session.user.id, item_id, item_type, note, commentaire]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Erreur lors de l'envoi." }); }
+});
+
 app.post('/api/comments/:id/like', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
     try {
@@ -636,50 +707,6 @@ app.post('/api/comments/:id/like', async (req, res) => {
                 }
             }
             res.json({ liked: true });
-        }
-    } catch (e) { 
-        res.status(500).json({ error: "Erreur BDD" }); 
-    }
-});
-
-app.post('/api/comments/:id/like', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
-    
-    try {
-        const commentId = req.params.id;
-        const userId = req.session.user.id; 
-        
-        // 1. On vérifie à qui appartient le commentaire
-        const [comments] = await db.query("SELECT user_id, music_item_id FROM commentaires WHERE id = ?", [commentId]);
-        
-        if (comments.length > 0) {
-            const authorId = comments[0].user_id;
-            const reference = comments[0].music_item_id;
-
-            // ✨ SÉCURITÉ : On bloque si c'est son propre commentaire
-            if (userId === authorId) {
-                return res.status(400).json({ error: "Vous ne pouvez pas aimer votre propre avis." });
-            }
-
-            // 2. Logique de Like / Unlike
-            const [exist] = await db.query("SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
-            
-            if (exist.length > 0) {
-                await db.query("DELETE FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
-                res.json({ liked: false });
-            } else {
-                await db.query("INSERT INTO comment_likes (user_id, comment_id) VALUES (?, ?)", [userId, commentId]);
-                
-                // 3. Notification
-                await db.query(`
-                    INSERT INTO notifications (user_id, actor_id, type, reference, date_creation) 
-                    VALUES (?, ?, 'like', ?, ?)
-                `, [authorId, userId, reference, new Date()]);
-                
-                res.json({ liked: true });
-            }
-        } else {
-            res.status(404).json({ error: "Commentaire introuvable." });
         }
     } catch (e) { 
         res.status(500).json({ error: "Erreur BDD" }); 
@@ -753,10 +780,6 @@ app.post('/register', async (req, res) => {
 });
 
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/'); });
-
-// ==========================================
-// ROUTES ADMINISTRATION (SÉCURISÉES)
-// ==========================================
 
 app.get('/admin', requireAdmin, async (req, res) => {
     try {
@@ -901,10 +924,6 @@ app.post('/api/admin/artists/replace', requireAdmin, async (req, res) => {
         res.json({ success: true });
     } catch(e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
-
-// ==========================================
-// PROFIL PUBLIC & FOLLOWERS (SÉCURISÉ)
-// ==========================================
 
 app.get('/user/:pseudo', async (req, res) => {
     const pseudo = req.params.pseudo;

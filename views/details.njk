@@ -55,15 +55,17 @@
           {{ track.wiki | safe }}
         </div>
 
-        <div class="distribution-container" style="background: #0c0c0e; border: 1px solid #1a1a1c; border-radius: 20px; padding: 30px; margin-bottom: 40px;">
-          <p style="font-size: 14px; color: #a1a1aa; font-weight: 800; letter-spacing: 1px; margin-bottom: 30px; text-transform: uppercase;">Distribution des notes</p>
+        <div class="distribution-container" style="background: #0c0c0e; border: 1px solid #1a1a1c; border-radius: 20px; padding: 30px; margin-bottom: 0;">
+          <p style="font-size: 14px; color: #a1a1aa; font-weight: 800; letter-spacing: 1px; margin-bottom: 30px; text-transform: uppercase;">
+              Distribution des notes {% if ratingStats.total > 0 %}(Moyenne : {{ ratingStats.avg }} ⭐){% endif %}
+          </p>
 
           {% set stats = [
-            {stars: 5, width: 75, count: 3},
-            {stars: 4, width: 30, count: 1},
-            {stars: 3, width: 2, count: 0},
-            {stars: 2, width: 2, count: 0},
-            {stars: 1, width: 2, count: 0}
+            {stars: 5, width: ratingStats.pct['5'], count: ratingStats.counts['5']},
+            {stars: 4, width: ratingStats.pct['4'], count: ratingStats.counts['4']},
+            {stars: 3, width: ratingStats.pct['3'], count: ratingStats.counts['3']},
+            {stars: 2, width: ratingStats.pct['2'], count: ratingStats.counts['2']},
+            {stars: 1, width: ratingStats.pct['1'], count: ratingStats.counts['1']}
           ] %}
 
           {% for row in stats %}
@@ -74,7 +76,7 @@
               {% endfor %}
             </div>
             <div style="flex: 1; height: 6px; background: #1a1a1c; border-radius: 10px; overflow: hidden;">
-              <div style="width: {{ row.width }}%; height: 100%; background: #f0b100; border-radius: 10px; box-shadow: 0 0 10px rgba(240, 177, 0, 0.3);"></div>
+              <div style="width: {{ row.width }}%; height: 100%; background: #f0b100; border-radius: 10px; box-shadow: 0 0 10px rgba(240, 177, 0, 0.3); transition: width 0.5s ease-in-out;"></div>
             </div>
             <span style="color: #a1a1aa; font-weight: bold; width: 20px; text-align: right;">{{ row.count }}</span>
           </div>
@@ -128,25 +130,21 @@
 </style>
 
 <script>
-    // Pour copier le lien de la page
-function copyShareLink() {
-        // Copie l'URL de la page dans le presse-papier
+    function copyShareLink() {
         navigator.clipboard.writeText(window.location.href).then(() => {
             const btn = document.getElementById('share-btn');
             const text = document.getElementById('share-text');
             const icon = document.getElementById('share-icon');
 
-            // --- ANIMATION "COPIÉ" ---
-            btn.style.background = "#22c55e"; // Devient Vert
+            btn.style.background = "#22c55e"; 
             text.innerText = "Copié !";
-            icon.setAttribute('data-lucide', 'check'); // Icone Coche
+            icon.setAttribute('data-lucide', 'check'); 
             lucide.createIcons();
 
-            // --- RETOUR A LA NORMALE (Après 2 secondes) ---
             setTimeout(() => {
-                btn.style.background = "#27272a"; // Redevient Gris
+                btn.style.background = "#27272a"; 
                 text.innerText = "Partager";
-                icon.setAttribute('data-lucide', 'share-2'); // Icone Partager
+                icon.setAttribute('data-lucide', 'share-2'); 
                 lucide.createIcons();
             }, 2000);
             
@@ -155,7 +153,6 @@ function copyShareLink() {
         });
     }
 
-    // Pour ajouter en Favoris 
     async function toggleFavorite(btn, title, artist, image) {
         const musicId = `${title}||${artist}||${image}`;
         const res = await fetch('/api/favorites/toggle', {
@@ -171,7 +168,7 @@ function copyShareLink() {
                 icon.style.color = '#ff2056';
             } else {
                 icon.style.fill = 'none';
-                icon.style.color = 'black'; // Car le bouton est blanc
+                icon.style.color = 'black';
             }
         } else {
             alert("Veuillez vous connecter pour ajouter aux favoris.");
@@ -179,6 +176,8 @@ function copyShareLink() {
     }
 </script>
 
-{% include "comments.njk" %}
+<div style="margin-top: 30px;">
+    {% include "comments.njk" %}
+</div>
 
 {% endblock %}

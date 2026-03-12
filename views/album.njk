@@ -57,17 +57,28 @@
       </div>
 
       <div style="flex: 1;">
+        
         <div style="background: #0c0c0e; border: 1px solid #1a1a1c; border-radius: 20px; padding: 24px; margin-bottom: 24px;">
-            <p style="font-size: 12px; color: #a1a1aa; font-weight: 800; margin-bottom: 20px; text-transform: uppercase;">Distribution des notes</p>
-            {% for i in [5,4,3,2,1] %}
+            <p style="font-size: 12px; color: #a1a1aa; font-weight: 800; margin-bottom: 20px; text-transform: uppercase;">
+                Distribution des notes {% if ratingStats.total > 0 %}(Moyenne : {{ ratingStats.avg }} ⭐){% endif %}
+            </p>
+            {% set stats = [
+                {stars: 5, width: ratingStats.pct['5'], count: ratingStats.counts['5']},
+                {stars: 4, width: ratingStats.pct['4'], count: ratingStats.counts['4']},
+                {stars: 3, width: ratingStats.pct['3'], count: ratingStats.counts['3']},
+                {stars: 2, width: ratingStats.pct['2'], count: ratingStats.counts['2']},
+                {stars: 1, width: ratingStats.pct['1'], count: ratingStats.counts['1']}
+            ] %}
+
+            {% for row in stats %}
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                 <div style="display: flex; gap: 2px;">
-                    {% for s in range(5) %}<i data-lucide="star" style="width:10px; fill: {% if s < i %}#f0b100{% else %}none{% endif %}; color: #f0b100;"></i>{% endfor %}
+                    {% for s in range(5) %}<i data-lucide="star" style="width:10px; fill: {% if s < row.stars %}#f0b100{% else %}none{% endif %}; color: #f0b100;"></i>{% endfor %}
                 </div>
-                <div style="flex: 1; height: 4px; background: #1a1a1c; border-radius: 10px;">
-                    <div style="width: {{ 100 - (i*15) }}%; height: 100%; background: #f0b100; border-radius: 10px;"></div>
+                <div style="flex: 1; height: 4px; background: #1a1a1c; border-radius: 10px; overflow: hidden;">
+                    <div style="width: {{ row.width }}%; height: 100%; background: #f0b100; border-radius: 10px; transition: width 0.5s ease-in-out;"></div>
                 </div>
-                <span style="color: #a1a1aa; font-size: 12px;">{{ range(0, 5) | random }}</span>
+                <span style="color: #a1a1aa; font-size: 12px; width: 15px; text-align: right;">{{ row.count }}</span>
             </div>
             {% endfor %}
         </div>
@@ -91,23 +102,20 @@
 
 <script>
     function copyShareLink() {
-        // Copie l'URL de la page dans le presse-papier
         navigator.clipboard.writeText(window.location.href).then(() => {
             const btn = document.getElementById('share-btn');
             const text = document.getElementById('share-text');
             const icon = document.getElementById('share-icon');
 
-            // --- ANIMATION "COPIÉ" ---
-            btn.style.background = "#22c55e"; // Devient Vert
+            btn.style.background = "#22c55e"; 
             text.innerText = "Copié !";
-            icon.setAttribute('data-lucide', 'check'); // Icone Coche
+            icon.setAttribute('data-lucide', 'check'); 
             lucide.createIcons();
 
-            // --- RETOUR A LA NORMALE (Après 2 secondes) ---
             setTimeout(() => {
-                btn.style.background = "#27272a"; // Redevient Gris
+                btn.style.background = "#27272a"; 
                 text.innerText = "Partager";
-                icon.setAttribute('data-lucide', 'share-2'); // Icone Partager
+                icon.setAttribute('data-lucide', 'share-2'); 
                 lucide.createIcons();
             }, 2000);
             
