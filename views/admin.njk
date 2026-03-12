@@ -41,73 +41,92 @@
         <div class="section-top">
             <div class="section-title"><i data-lucide="users" style="color: #2b7fff;"></i> Gestion des utilisateurs</div>
         </div>
-        <table class="admin-table">
-            <thead>
-                <tr><th>ID</th><th>UTILISATEUR</th><th>EMAIL</th><th>RÔLE</th><th>STATUT</th><th style="text-align: right;">ACTIONS</th></tr>
-            </thead>
-            <tbody>
-                {% for u in users %}
-                <tr id="user-row-{{ u.id }}">
-                    <td style="color: #71717b;">#{{ u.id }}</td>
-                    <td>
-                        <div class="user-cell">
-                            <img src="{{ u.avatar if u.avatar else 'https://ui-avatars.com/api/?name=' + u.pseudo + '&background=27272a&color=fff' }}">
-                            <strong style="color: #f4f4f5;">{{ u.pseudo }}</strong>
-                        </div>
-                    </td>
-                    <td style="color: #a1a1aa;">{{ u.email }}</td>
-                    <td>
-                        <select class="role-select {% if u.role == 'admin' %}role-admin{% else %}role-user{% endif %}" onchange="changeRole({{ u.id }}, this.value, this)" title="Changer le rôle">
-                            <option value="utilisateur" {% if u.role == 'utilisateur' %}selected{% endif %}>UTILISATEUR</option>
-                            <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>ADMIN</option>
-                        </select>
-                    </td>
-                    <td>
-                        <span class="status" id="status-{{ u.id }}">
-                            <span class="status-dot" style="background-color: {% if u.is_banned %}#ff2056{% else %}#00bc7d{% endif %};"></span> 
-                            <span style="color: #d4d4d8;">{% if u.is_banned %}Banni{% else %}Actif{% endif %}</span>
-                        </span>
-                    </td>
-                    <td style="text-align: right;">
-                        <button class="action-btn" title="{% if u.is_banned %}Débannir l'utilisateur{% else %}Bannir l'utilisateur{% endif %}" onclick="toggleBan({{ u.id }}, this)">
-                            <i data-lucide="{% if u.is_banned %}check-circle{% else %}ban{% endif %}"></i>
-                        </button>
-                        <button class="action-btn action-delete" title="Supprimer définitivement" onclick="deleteUser({{ u.id }})"><i data-lucide="trash-2"></i></button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div style="overflow-x: auto;">
+            <table class="admin-table">
+                <thead>
+                    <tr><th>ID</th><th>UTILISATEUR</th><th>EMAIL</th><th>RÔLE</th><th>STATUT</th><th style="text-align: right;">ACTIONS</th></tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr id="user-row-{{ u.id }}">
+                        <td style="color: #71717b;">#{{ u.id }}</td>
+                        <td>
+                            <div class="user-cell">
+                                <img src="{{ u.avatar if u.avatar else 'https://ui-avatars.com/api/?name=' + u.pseudo + '&background=27272a&color=fff' }}">
+                                <strong style="color: #f4f4f5;">{{ u.pseudo }}</strong>
+                            </div>
+                        </td>
+                        <td style="color: #a1a1aa;">{{ u.email }}</td>
+                        <td>
+                            <select class="role-select {% if u.role == 'admin' %}role-admin{% else %}role-user{% endif %}" onchange="changeRole({{ u.id }}, this.value, this)" title="Changer le rôle">
+                                <option value="utilisateur" {% if u.role == 'utilisateur' %}selected{% endif %}>UTILISATEUR</option>
+                                <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>ADMIN</option>
+                            </select>
+                        </td>
+                        <td>
+                            <span class="status" id="status-{{ u.id }}">
+                                <span class="status-dot" style="background-color: {% if u.is_banned %}#ff2056{% else %}#00bc7d{% endif %};"></span> 
+                                <span style="color: #d4d4d8;">{% if u.is_banned %}Banni{% else %}Actif{% endif %}</span>
+                            </span>
+                        </td>
+                        <td style="text-align: right; display: flex; gap: 10px; align-items: center; justify-content: flex-end;">
+                            <button class="action-btn" title="{% if u.is_banned %}Débannir l'utilisateur{% else %}Bannir l'utilisateur{% endif %}" onclick="toggleBan({{ u.id }}, this)" style="margin:0;">
+                                <i data-lucide="{% if u.is_banned %}check-circle{% else %}ban{% endif %}"></i>
+                            </button>
+                            <button class="action-btn action-delete" title="Supprimer définitivement" onclick="deleteUser({{ u.id }})" style="margin:0;">
+                                <i data-lucide="trash-2"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <div class="admin-section" style="margin-top: 40px;">
         <div class="section-top">
             <div class="section-title"><i data-lucide="alert-triangle" style="color: #fe9a00;"></i> Commentaires signalés</div>
         </div>
-        <table class="admin-table">
-            <thead>
-                <tr><th>ID</th><th>UTILISATEUR</th><th>COMMENTAIRE</th><th>RAISON</th><th>SIGNALEMENTS</th><th style="text-align: right;">ACTIONS</th></tr>
-            </thead>
-            <tbody>
-                {% for r in reports %}
-                <tr id="report-row-{{ r.comment_id }}">
-                    <td style="color: #71717b;">#{{ r.comment_id }}</td>
-                    <td style="color: #f4f4f5;"><strong>{{ r.pseudo }}</strong></td>
-                    <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ r.comment }}">
-                        <a href="{{ r.url }}" target="_blank" style="color: #d946ef; text-decoration: none; display: block; width: 100%;">
+        <div style="overflow-x: auto;">
+            <table class="admin-table">
+                <thead>
+                    <tr><th>ID</th><th>UTILISATEUR</th><th>COMMENTAIRE</th><th>CIBLE</th><th>MOTIF</th><th>SGNL.</th><th style="text-align: right;">ACTIONS</th></tr>
+                </thead>
+                <tbody>
+                    {% for r in reports %}
+                    <tr id="report-row-{{ r.comment_id }}">
+                        <td style="color: #71717b;">#{{ r.comment_id }}</td>
+                        <td style="color: #f4f4f5;"><strong>{{ r.pseudo }}</strong></td>
+                        <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ r.comment }}">
                             {{ r.comment }}
-                        </a>
-                    </td>                   
-                    <td style="color: #d4d4d8;">{{ r.reason }}</td>
-                    <td><span class="badge badge-warning">{{ r.count }}</span></td>
-                    <td style="text-align: right;">
-                        <button class="action-btn" title="Ignorer le signalement (Le commentaire reste)" onclick="ignoreReport({{ r.comment_id }})"><i data-lucide="check"></i></button>
-                        <button class="action-btn action-delete" title="Supprimer le commentaire de la BDD" onclick="deleteComment({{ r.comment_id }})"><i data-lucide="trash-2"></i></button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                        <td>
+                            <a href="{{ r.url }}" style="color: #d946ef; text-decoration: none; font-weight: bold; display: inline-flex; align-items: center; gap: 5px;">
+                                {{ r.music_item_id }} <i data-lucide="external-link" style="width: 14px;"></i>
+                            </a>
+                        </td>                 
+                        <td style="color: #a1a1aa; font-size: 13px;">
+                            {{ r.reason }}
+                        </td>
+                        <td>
+                            <span style="background: rgba(254, 154, 0, 0.1); color: #fe9a00; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: bold;">x{{ r.count }}</span>
+                        </td>
+                        <td style="text-align: right; display: flex; gap: 10px; align-items: center; justify-content: flex-end;">
+                            <button class="action-btn action-check" title="Ignorer le signalement (Le commentaire reste)" onclick="ignoreReport({{ r.comment_id }})" style="margin:0;">
+                                <i data-lucide="check"></i>
+                            </button>
+                            <button class="action-btn action-delete" title="Supprimer le commentaire de la BDD" onclick="deleteComment({{ r.comment_id }})" style="margin:0;">
+                                <i data-lucide="trash-2"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" style="padding: 30px; text-align: center; color: #71717b;">Aucun signalement.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <div class="admin-section" style="margin-top: 40px;">
@@ -120,47 +139,49 @@
             </div>
         </div>
 
-        <table class="admin-table">
-            <thead>
-                <tr><th>POSITION</th><th>ARTISTE</th><th>AUDITEURS</th><th style="text-align: right;">ACTIONS</th></tr>
-            </thead>
-            <tbody>
-                {% for a in featuredArtists %}
-                <tr {% if loop.index0 == 0 %}style="background: rgba(225,42,251,0.05);"{% endif %}>
-                    <td>
-                        <input type="number" class="position-input" value="{{ a.position }}" min="1" max="6" 
-                               oninput="if(this.value > 6) this.value = 6; if(this.value < 1 && this.value !== '') this.value = 1;" 
-                               onchange="swapArtistPosition({{ a.db_id }}, this.value)" title="Changer l'ordre">
-                    </td>
-                    <td>
-                        <div class="artist-cell">
-                            <img src="{{ a.image }}" alt="{{ a.name }}">
-                            <div class="artist-info">
-                                <strong style="color: #f4f4f5; font-size: 15px;">{{ a.name }}</strong>
-                                {% if loop.index0 == 0 %}
-                                <span style="color: #e12afb; font-size: 10px; font-weight: bold; text-transform: uppercase;">Section à la une</span>
-                                {% endif %}
+        <div style="overflow-x: auto;">
+            <table class="admin-table">
+                <thead>
+                    <tr><th>POSITION</th><th>ARTISTE</th><th>AUDITEURS</th><th style="text-align: right;">ACTIONS</th></tr>
+                </thead>
+                <tbody>
+                    {% for a in featuredArtists %}
+                    <tr {% if loop.index0 == 0 %}style="background: rgba(225,42,251,0.05);"{% endif %}>
+                        <td>
+                            <input type="number" class="position-input" value="{{ a.position }}" min="1" max="6" 
+                                   oninput="if(this.value > 6) this.value = 6; if(this.value < 1 && this.value !== '') this.value = 1;" 
+                                   onchange="swapArtistPosition({{ a.db_id }}, this.value)" title="Changer l'ordre">
+                        </td>
+                        <td>
+                            <div class="artist-cell">
+                                <img src="{{ a.image }}" alt="{{ a.name }}">
+                                <div class="artist-info">
+                                    <strong style="color: #f4f4f5; font-size: 15px;">{{ a.name }}</strong>
+                                    {% if loop.index0 == 0 %}
+                                    <span style="color: #e12afb; font-size: 10px; font-weight: bold; text-transform: uppercase;">Section à la une</span>
+                                    {% endif %}
+                                </div>
                             </div>
-                        </div>
-                        
-                        {% if loop.index0 == 0 %}
-                        <div class="artist-desc-box">
-                            <div style="width: 150px;">
-                                <strong style="color: #f4f4f5; display:block; font-size: 14px;">Description</strong>
-                                <span style="color: #e12afb; font-size: 10px; font-weight: bold; text-transform: uppercase;">Affichée sur l'accueil</span>
+                            
+                            {% if loop.index0 == 0 %}
+                            <div class="artist-desc-box">
+                                <div style="width: 150px;">
+                                    <strong style="color: #f4f4f5; display:block; font-size: 14px;">Description</strong>
+                                    <span style="color: #e12afb; font-size: 10px; font-weight: bold; text-transform: uppercase;">Affichée sur l'accueil</span>
+                                </div>
+                                <textarea class="desc-text" onchange="updateDesc({{ a.db_id }}, this.value)" placeholder="Écrivez l'accroche ici...">{{ a.desc }}</textarea>
                             </div>
-                            <textarea class="desc-text" onchange="updateDesc({{ a.db_id }}, this.value)" placeholder="Écrivez l'accroche ici...">{{ a.desc }}</textarea>
-                        </div>
-                        {% endif %}
-                    </td>
-                    <td style="color: #a1a1aa;">{{ a.listeners }}</td>
-                    <td style="text-align: right;">
-                        <button class="action-btn action-delete" title="Supprimer (Remplace par un aléatoire)" onclick="randomizeArtist({{ a.db_id }}, '{{ a.name }}')"><i data-lucide="trash-2"></i></button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                            {% endif %}
+                        </td>
+                        <td style="color: #a1a1aa;">{{ a.listeners }}</td>
+                        <td style="text-align: right;">
+                            <button class="action-btn action-delete" title="Supprimer (Remplace par un aléatoire)" onclick="randomizeArtist({{ a.db_id }}, '{{ a.name }}')"><i data-lucide="trash-2"></i></button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -197,9 +218,6 @@
 <script>
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    // ==========================================
-    // MAINTENANCE
-    // ==========================================
     async function toggleMaintenance(checkbox) {
         await fetch('/api/admin/maintenance', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: checkbox.checked })
@@ -207,36 +225,19 @@
         window.location.reload();
     }
 
-    // ==========================================
-    // UTILISATEURS
-    // ==========================================
-    
-    // Changer le rôle via la liste déroulante
     async function changeRole(id, newRole, selectElement) {
         if (!confirm(`Changer le rôle de cet utilisateur en ${newRole.toUpperCase()} ?`)) {
-            window.location.reload(); // Annule le changement visuel si on dit non
-            return;
+            window.location.reload(); return;
         }
-        
         const res = await fetch(`/api/admin/users/${id}/role`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role: newRole })
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: newRole })
         });
-        
         if (res.ok) {
-            // Mise à jour visuelle des couleurs de la liste déroulante
-            if (newRole === 'admin') {
-                selectElement.classList.remove('role-user');
-                selectElement.classList.add('role-admin');
-            } else {
-                selectElement.classList.remove('role-admin');
-                selectElement.classList.add('role-user');
-            }
+            if (newRole === 'admin') { selectElement.classList.remove('role-user'); selectElement.classList.add('role-admin'); } 
+            else { selectElement.classList.remove('role-admin'); selectElement.classList.add('role-user'); }
         }
     }
 
-    // Toggle Ban (Bannir / Débannir)
     async function toggleBan(id, btnElement) {
         const isBanning = btnElement.innerHTML.includes('ban');
         if (!confirm(isBanning ? "Bannir cet utilisateur ?" : "Débannir et réactiver ce compte ?")) return;
@@ -256,31 +257,28 @@
         lucide.createIcons();
     }
     
-    // Supprimer utilisateur
     async function deleteUser(id) {
         if (!confirm("Supprimer DÉFINITIVEMENT cet utilisateur de la base de données ?")) return;
         if ((await fetch(`/api/admin/users/${id}`, { method: 'DELETE' })).ok) document.getElementById(`user-row-${id}`).remove();
     }
 
-    // ==========================================
-    // COMMENTAIRES
-    // ==========================================
-    
-    // Bouton Check : Ignore le signalement
+    // NOUVELLE FONCTION BRANCHÉE À L'API
     async function ignoreReport(id) {
-        if ((await fetch(`/api/admin/reports/${id}/ignore`, { method: 'POST' })).ok) document.getElementById(`report-row-${id}`).remove();
+        if(confirm("Ignorer ce signalement ? (Le commentaire sera conservé sur le site)")) {
+            const res = await fetch(`/api/admin/reports/${id}/ignore`, { method: 'POST' });
+            if(res.ok) document.getElementById(`report-row-${id}`).remove();
+            else alert("Erreur serveur.");
+        }
     }
     
-    // Bouton Poubelle : Supprime le commentaire
+    // NOUVELLE FONCTION BRANCHÉE À L'API
     async function deleteComment(id) {
-        if (!confirm("Supprimer ce commentaire pour toujours ?")) return;
-        if ((await fetch(`/api/admin/comments/${id}`, { method: 'DELETE' })).ok) document.getElementById(`report-row-${id}`).remove();
+        if (!confirm("Attention : Supprimer ce commentaire de la base de données pour infraction ?")) return;
+        const res = await fetch(`/api/admin/comments/${id}`, { method: 'DELETE' });
+        if(res.ok) document.getElementById(`report-row-${id}`).remove();
+        else alert("Erreur serveur.");
     }
 
-    // ==========================================
-    // ARTISTES
-    // ==========================================
-    
     async function updateDesc(id, text) {
         await fetch('/api/admin/artists/description', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id, desc: text }) });
     }
@@ -292,11 +290,8 @@
             window.location.reload(); 
             return;
         }
-
         await fetch('/api/admin/artists/reorder', { 
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'}, 
-            body: JSON.stringify({ id: dbId, newPosition: position }) 
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: dbId, newPosition: position }) 
         });
         window.location.reload();
     }
@@ -307,7 +302,6 @@
         window.location.reload();
     }
 
-    // RECHERCHE ARTISTE ANTI-DOUBLON
     const searchInput = document.getElementById('artist-search-input');
     const suggBox = document.getElementById('artist-suggestions');
     let artistToAdd = "";
@@ -345,87 +339,7 @@
             body: JSON.stringify({ oldArtistId: select.value, newArtistName: artistToAdd })
         });
         const data = await res.json();
-        if (data.error) {
-            alert("Erreur : " + data.error); 
-        } else {
-            window.location.reload();
-        }
+        if (data.error) alert("Erreur : " + data.error); else window.location.reload();
     }
 </script>
-
-<style>
-    .admin-dashboard { padding: 40px; max-width: 1200px; margin: 0 auto; color: white; font-family: 'Inter', sans-serif; }
-    .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-    .admin-header h1 { font-size: 30px; font-weight: bold; margin: 0; }
-    .admin-header p { color: #71717b; margin: 5px 0 0 0; }
-    .maintenance-toggle { background: rgba(24,24,27,0.5); border: 1px solid #27272a; padding: 10px 20px; border-radius: 14px; display: flex; align-items: center; gap: 12px; color: #d4d4d8; font-weight: bold; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
-    .stat-card { background: rgba(24,24,27,0.4); border: 1px solid #27272a; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px; }
-    .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; justify-content: center; align-items: center; }
-    .stat-title { color: #71717b; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0; font-weight: bold; }
-    .stat-value { font-size: 32px; margin: 0; font-weight: bold; }
-    .admin-section { background: rgba(24,24,27,0.4); border: 1px solid #27272a; border-radius: 20px; padding-top: 24px; }
-    .section-top { display: flex; justify-content: space-between; align-items: center; padding: 0 24px 20px 24px; border-bottom: 1px solid #27272a; }
-    .section-title { font-size: 20px; font-weight: bold; display: flex; align-items: center; gap: 12px; }
-    .section-search { display: flex; align-items: center; background: #09090b; border: 1px solid #3f3f46; padding: 8px 16px; border-radius: 12px; gap: 10px; }
-    .section-search input { background: transparent; border: none; color: white; outline: none; }
-    .dropdown-suggestions { position: absolute; top: 110%; left: 0; width: 100%; background: #18181b; border: 1px solid #3f3f46; border-radius: 12px; display: none; overflow: hidden; z-index: 100; box-shadow: 0 10px 25px rgba(0,0,0,0.8); }
-    .sugg-item { padding: 12px 20px; cursor: pointer; border-bottom: 1px solid #27272a; color: white; }
-    .sugg-item:hover { background: #27272a; color: #e12afb; }
-    .admin-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
-    .admin-table th { text-align: left; padding: 16px 24px; color: #71717b; font-size: 12px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #27272a; }
-    .admin-table td { padding: 20px 24px; border-bottom: 1px solid #27272a; font-size: 14px; vertical-align: middle; }
-    .user-cell { display: flex; align-items: center; gap: 12px; }
-    .user-cell img { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #3f3f46; }
-    
-    /* MENU DÉROULANT DES RÔLES */
-    .role-select { padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; outline: none; cursor: pointer; border: 1px solid transparent; transition: 0.2s; text-transform: uppercase; }
-    .role-select:focus { border-color: #e12afb; }
-    .role-admin { background: rgba(225,42,251,0.1); color: #e12afb; }
-    .role-user { background: rgba(63,63,71,0.3); color: #a1a1aa; }
-    .role-select option { background: #18181b; color: white; font-weight: bold; text-transform: uppercase; }
-
-    .badge { padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
-    .badge-warning { background: rgba(254,154,0,0.1); color: #fe9a00; font-size: 13px; }
-    .status { display: flex; align-items: center; gap: 8px; font-weight: 500; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
-    .action-btn { background: rgba(39,39,42,0.8); border: 1px solid #3f3f46; color: #a1a1aa; width: 36px; height: 36px; border-radius: 10px; cursor: pointer; transition: 0.2s; margin-left: 8px; }
-    .action-btn:hover { background: #52525b; color: white; transform: scale(1.05); }
-    .action-delete:hover { background: #ff2056; border-color: #ff2056; }
-    .position-input { width: 44px; height: 44px; background: rgba(24,24,27,1); border: 1px solid #3f3f46; border-radius: 10px; color: #a1a1aa; font-weight: bold; text-align: center; font-size: 16px; transition: 0.2s; }
-    .position-input:hover { border-color: #e12afb; color: white; }
-    .position-input::-webkit-inner-spin-button { -webkit-appearance: none; }
-    .artist-cell { display: flex; align-items: center; gap: 16px; }
-    .artist-cell img { width: 48px; height: 48px; border-radius: 12px; object-fit: cover; }
-    .artist-info { display: flex; flex-direction: column; gap: 4px; }
-    .artist-desc-box { display: flex; gap: 20px; margin-top: 20px; align-items: center; padding-left: 64px; }
-    .desc-text { background: rgba(9,9,11,1); border: 1px solid #3f3f46; border-radius: 14px; padding: 16px; color: #a1a1aa; font-size: 14px; flex-grow: 1; resize: none; height: 80px; outline: none; transition: 0.3s; }
-    .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #3f3f46; transition: .4s; border-radius: 34px; }
-    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-    input:checked + .slider { background-color: #00bc7d; }
-    input:checked + .slider:before { transform: translateX(20px); }
-    
-    /* NOUEAU DESIGN POPUP */
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-    .modal-box { background: #09090b; border: 1px solid #27272a; padding: 30px; border-radius: 24px; width: 420px; text-align: left; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
-    .modal-header { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
-    .modal-icon { background: rgba(217, 70, 239, 0.1); color: #d946ef; width: 48px; height: 48px; border-radius: 14px; display: flex; justify-content: center; align-items: center; }
-    .modal-box h3 { margin: 0; font-size: 20px; color: white; font-weight: bold; }
-    .modal-subtitle { color: #71717b; font-size: 13px; margin: 4px 0 0 0; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
-    .modal-text { color: #a1a1aa; font-size: 15px; line-height: 1.5; margin: 20px 0; }
-
-    .custom-select-wrapper { position: relative; margin-bottom: 30px; }
-    .custom-select { width: 100%; padding: 14px 16px; background: #18181b; color: white; border: 1px solid #3f3f46; border-radius: 12px; font-size: 15px; appearance: none; outline: none; cursor: pointer; transition: 0.2s; }
-    .custom-select:focus { border-color: #d946ef; }
-    .select-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: #a1a1aa; width: 18px; pointer-events: none; }
-
-    .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
-    .btn-cancel { background: transparent; color: #a1a1aa; border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-    .btn-cancel:hover { background: rgba(255,255,255,0.05); color: white; }
-    .btn-confirm { background: linear-gradient(135deg, #d946ef, #8b5cf6); color: white; border: none; padding: 12px 24px; border-radius: 12px; cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(217, 70, 239, 0.4); display: flex; align-items: center; }
-    .btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(217, 70, 239, 0.6); }
-</style>
 {% endblock %}
