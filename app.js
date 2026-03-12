@@ -105,10 +105,8 @@ function formatNumber(numStr) {
     let num = parseInt(numStr, 10);
     if (isNaN(num)) return "0";
     if (num >= 1000000) {
-        // Ex: 1 300 000 devient "1,3 M"
         return (num / 1000000).toFixed(1).replace('.', ',') + " M";
     }
-    // Ex: 422 535 reste tel quel avec les espaces
     return num.toLocaleString('fr-FR');
 }
 
@@ -164,46 +162,40 @@ app.get('/', async (req, res) => {
         let topArtists = [];
         
         for (let a of dbArtists) {
-            let listeners = "0M";
+            let listenersFormatted = "0";
             try {
                 const infoResp = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(a.api_artist_id)}&api_key=${API_KEY}&format=json`);
                 if (infoResp.data.artist) {
-                    let lst = parseInt(infoResp.data.artist.stats.listeners);
-                    listeners = lst >= 1000000 ? (lst / 1000000).toFixed(1) + "M" : lst.toLocaleString('fr-FR');
+                    listenersFormatted = formatNumber(infoResp.data.artist.stats.listeners);
                 }
-            } catch (errInner) { 
-                console.log(`⚠️ Impossible de charger les stats de ${a.api_artist_id}`);
-            }
+            } catch(e) {}
             
             topArtists.push({
-                name: a.api_artist_id, 
-                listeners: listeners, 
-                image: await getRealArtistImage(a.api_artist_id),
+                name: a.api_artist_id, listeners: listenersFormatted, image: await getRealArtistImage(a.api_artist_id),
                 accroche: a.accroche || `Découvrez l'univers de ${a.api_artist_id}.`
             });
         }
 
         const heroArtist = topArtists.length > 0 ? topArtists[0] : null;
-        
-        // ✨ LE BOUCLIER EST ICI : On protège la requête Last.fm capricieuse
+
+        // NOUVEAU MATCH MUSICAL SÉCURISÉ (Par tag)
         let initialMatch = [];
         try {
-            const randomPage = Math.floor(Math.random() * 50) + 1;
-            const respMatch = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=rj&api_key=${API_KEY}&format=json&limit=10&page=${randomPage}`);
+            const matchTags = ['pop', 'rock', 'hip-hop', 'electronic', 'indie', 'alternative', 'rnb', 'jazz'];
+            const randTag = matchTags[Math.floor(Math.random() * matchTags.length)];
+            const randPage = Math.floor(Math.random() * 10) + 1; // 10 premières pages garanties pleines
+            const respMatch = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=tag.gettopalbums&tag=${randTag}&api_key=${API_KEY}&format=json&limit=20&page=${randPage}`);
             
-            initialMatch = respMatch.data.topalbums.album.sort(() => 0.5 - Math.random()).slice(0, 3).map(alb => ({
-                title: alb.name, artist: alb.artist.name, image: alb.image[3]['#text'] || "https://via.placeholder.com/300"
+            let matchAlbums = respMatch.data.albums.album || [];
+            matchAlbums = matchAlbums.filter(a => a.image && a.image[3]['#text'] && !a.image[3]['#text'].includes('2a96cbd8'));
+            
+            initialMatch = matchAlbums.sort(() => 0.5 - Math.random()).slice(0, 3).map(alb => ({
+                title: alb.name, artist: alb.artist.name, image: alb.image[3]['#text']
             }));
-        } catch (matchError) {
-            console.log("⚠️ L'API Last.fm a planté pour les suggestions, on affiche l'accueil sans elles.");
-        }
+        } catch(e) {}
 
         res.render('index.njk', { topArtists, heroArtist, initialMatch, page: 'home' });
-        
-    } catch (e) { 
-        console.error("🚨 ERREUR FATALE SUR L'ACCUEIL :", e);
-        res.status(500).send(`<h1 style="color:white; background:red; padding:20px;">ERREUR : ${e.message}</h1>`); 
-    }
+    } catch (e) { res.status(500).send("Erreur Accueil"); }
 });
 
 app.get('/search', async (req, res) => {
@@ -284,8 +276,8 @@ app.get('/details/:name', async (req, res) => {
             name: t.name, artist: t.artist.name, album: t.album?.title || "Single",
             image: t.album?.image[3]['#text'] || t.image?.[3]['#text'] || "https://via.placeholder.com/300",
             duration, 
-            playcount: formatNumber(t.playcount), // UTILISATION DE FORMATNUMBER
-            listeners: formatNumber(t.listeners), // UTILISATION DE FORMATNUMBER
+            playcount: formatNumber(t.playcount), 
+            listeners: formatNumber(t.listeners),
             wiki: t.wiki?.summary || "Aucune description.", tags: t.toptags?.tag?.slice(0, 5) || [], year: "2024"
         };
 
@@ -349,12 +341,12 @@ app.get('/artiste/:name', async (req, res) => {
 
         const artistData = {
             name: a.name, image: finalImage,
-            listeners: formatNumber(a.stats.listeners), // UTILISATION DE FORMATNUMBER
+            listeners: formatNumber(a.stats.listeners), 
             totalAlbums: strictAlbumCount > 0 ? strictAlbumCount : albumsResp.data.topalbums.album.length,
             bio: a.bio.summary ? a.bio.summary.split('<a')[0] : "Pas de bio disponible.",
             tags: a.tags.tag.slice(0, 6),
             albums: albumsResp.data.topalbums.album.map(alb => ({ title: alb.name, image: alb.image[3]['#text'] || 'https://via.placeholder.com/150' })),
-            topTracks: tracksResp.data.toptracks.track.map((t, index) => ({ rank: index + 1, title: t.name, listeners: formatNumber(t.listeners) })) // UTILISATION DE FORMATNUMBER
+            topTracks: tracksResp.data.toptracks.track.map((t, index) => ({ rank: index + 1, title: t.name, listeners: formatNumber(t.listeners) }))
         };
 
         const userId = req.session.user ? req.session.user.id : 0;
@@ -381,15 +373,13 @@ app.get('/album/:artist/:album', async (req, res) => {
                 const duration = parseInt(t.duration || 0);
                 totalMs += duration;
                 
-                // Simulation réaliste du playcount pour la piste (L'API ne le donne pas pour les albums)
-                // Cela génère un entier aléatoire (ex: 753 200) formaté correctement
                 const mockPlays = Math.floor(Math.random() * 4500000) + 150000; 
 
                 return { 
                     name: t.name, 
                     duration: duration > 0 ? Math.floor(duration / 60) + ":" + (duration % 60).toString().padStart(2, '0') : "--:--", 
                     rank: t['@attr']?.rank || 1, 
-                    playcount: formatNumber(mockPlays) // UTILISATION DE FORMATNUMBER
+                    playcount: formatNumber(mockPlays)
                 };
             });
         }
@@ -578,6 +568,7 @@ app.get('/profil', async (req, res) => {
     }
 });
 
+
 app.post('/api/profil/edit', upload.single('avatar'), async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Non connecté" });
     try {
@@ -620,28 +611,24 @@ app.delete('/api/profil/delete', async (req, res) => {
     }
 });
 
-app.get('/api/search-users', async (req, res) => {
-    try {
-        const { q } = req.query;
-        if (!q || q.length < 2) return res.json([]);
-        const [users] = await db.query('SELECT pseudo, avatar FROM users WHERE pseudo LIKE ? LIMIT 5', [`%${q}%`]);
-        res.json(users);
-    } catch (e) {
-        res.status(500).json({ error: "Erreur" });
-    }
-});
 
+// NOUVEAU MOTEUR DE MATCH ALÉATOIRE SÉCURISÉ
 app.get('/api/match', async (req, res) => {
     try {
         const API_KEY = process.env.LASTFM_API_KEY;
-        const randomPage = Math.floor(Math.random() * 100) + 1;
-        const response = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=rj&api_key=${API_KEY}&format=json&limit=30&page=${randomPage}`);
-        const albums = response.data.topalbums.album.sort(() => 0.5 - Math.random());
+        const matchTags = ['pop', 'rock', 'hip-hop', 'electronic', 'indie', 'alternative', 'rnb', 'jazz', 'soul'];
+        const randTag = matchTags[Math.floor(Math.random() * matchTags.length)];
+        const randPage = Math.floor(Math.random() * 10) + 1; // Toujours une page pleine !
+        
+        const response = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=tag.gettopalbums&tag=${randTag}&api_key=${API_KEY}&format=json&limit=30&page=${randPage}`);
+        let albums = response.data.albums.album || [];
+        
+        albums = albums.sort(() => 0.5 - Math.random());
         const result = [];
         const seenArtists = new Set();
         
         for (let alb of albums) {
-            let img = alb.image[3]['#text'];
+            let img = alb.image ? alb.image[3]['#text'] : null;
             if (img && !img.includes('2a96cbd8') && !seenArtists.has(alb.artist.name)) {
                 result.push({ title: alb.name, artist: alb.artist.name, image: img });
                 seenArtists.add(alb.artist.name);
@@ -649,8 +636,11 @@ app.get('/api/match', async (req, res) => {
             if (result.length === 3) break;
         }
         res.json(result);
-    } catch (error) { res.status(500).json({ error: "Erreur Match" }); }
+    } catch (error) { 
+        res.status(500).json({ error: "Erreur Match" }); 
+    }
 });
+
 
 app.get('/api/suggest', async (req, res) => {
     try {
