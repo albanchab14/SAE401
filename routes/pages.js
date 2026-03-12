@@ -340,41 +340,59 @@ router.get('/notifications', async (req, res) => {
             ORDER BY n.date_creation DESC
         `, [req.session.user.id]);
 
-        const notifications = rawNotifications.map(n => {
+        // On utilise Promise.all pour permettre au code d'aller vérifier le type dans la BDD
+        const notifications = await Promise.all(rawNotifications.map(async (n) => {
             let icon, color, bgColor, actionText;
             
             if (n.type === 'like') {
                 icon = 'heart'; color = '#e12afb'; bgColor = 'rgba(225, 42, 251, 0.1)';
                 
-                // ✨ LOGIQUE DE LIEN INTELLIGENTE
                 let refName = n.reference || "un élément";
-                let refUrl = `/search?q=${encodeURIComponent(refName)}`; // Par défaut, on cherche !
+                let refUrl = "#";
                 
-                // Si c'est un album (format "Artiste::Album")
-                if (n.reference && n.reference.includes('::')) {
-                    let parts = n.reference.split('::');
-                    refName = parts[1]; // On n'affiche que le nom de l'album
-                    refUrl = `/album/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`;
+                // 1. On cherche discrètement le type (artist, track, album) dans les commentaires existants
+                let itemType = 'track'; // Par défaut
+                try {
+                    const [cData] = await db.query("SELECT item_type FROM commentaires WHERE music_item_id = ? LIMIT 1", [n.reference]);
+                    if (cData.length > 0) itemType = cData[0].item_type;
+                } catch(e) {}
+                
+                // 2. Création de la bonne URL directe selon le type !
+                if (itemType === 'album') {
+                    let artist = "Inconnu"; let title = refName;
+                    if (refName.includes('::')) { 
+                        let parts = refName.split('::'); artist = parts[0].trim(); title = parts[1].trim(); 
+                    } else if (refName.includes('-')) { 
+                        let parts = refName.split('-'); artist = parts[0].trim(); title = parts.slice(1).join('-').trim(); 
+                    }
+                    refName = title; // On n'affiche que le nom de l'album
+                    refUrl = `/album/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
+                } 
+                else if (itemType === 'artist') {
+                    refUrl = `/artiste/${encodeURIComponent(refName)}`;
+                } 
+                else { 
+                    refUrl = `/details/${encodeURIComponent(refName)}`;
                 }
                 
-                actionText = `a aimé votre commentaire sur <a href="${refUrl}" class="notif-link">${refName}</a>`;
+                actionText = `a aimé votre avis sur <a href="${refUrl}" class="notif-link">${refName}</a>`;
                 
             } else if (n.type === 'follow') {
                 icon = 'user-plus'; color = '#3b82f6'; bgColor = 'rgba(59, 130, 246, 0.1)';
                 actionText = 'a commencé à vous suivre';
-            } else if (n.type === 'rating') {
-                icon = 'star'; color = '#eab308'; bgColor = 'rgba(234, 179, 8, 0.1)';
-                actionText = `a noté 5 étoiles un album que vous avez aimé`; 
             }
             
             return {
                 id: n.id, type: n.type, icon: icon, color: color, bgColor: bgColor,
                 user: n.actor_pseudo, action: actionText, is_read: n.is_read, time: timeAgo(n.date_creation) 
             };
-        });
+        }));
 
         res.render('notifications.njk', { notifications, page: 'notifications' });
-    } catch (error) { res.status(500).send("Erreur serveur."); }
+    } catch (error) { 
+        console.error(error);
+        res.status(500).send("Erreur serveur."); 
+    }
 });
 
 // --- ACTIONS SUR LES NOTIFICATIONS ---

@@ -157,7 +157,10 @@ router.post('/comments/:id/like', async (req, res) => {
                 const authorId = comments[0].user_id;
                 const reference = comments[0].music_item_id;
                 if (userId !== authorId) {
-                    await db.query(`INSERT INTO notifications (user_id, actor_id, type, reference, date_creation) VALUES (?, ?, 'like', ?, ?)`, [authorId, userId, reference, new Date()]);
+                    await db.query(`
+                        INSERT INTO notifications (user_id, actor_id, type, commentaire_id, date_creation) 
+                        VALUES (?, ?, 'like', ?, ?)
+                    `, [authorId, userId, commentId, new Date()]);
                 }
             }
             res.json({ liked: true });
@@ -231,11 +234,11 @@ router.post('/user/:id/follow', async (req, res) => {
             // Abonnement
             await db.query("INSERT INTO follows (follower_id, following_id) VALUES (?, ?)", [followerId, followingId]);
             
-            // ✨ LE TEST DE NOTIFICATION ✨
+            // LE TEST DE NOTIFICATION
             try {
-                // J'ai rajouté "reference" avec la valeur NULL pour éviter les bugs SQL
+                // On met NULL pour commentaire_id vu que c'est un abonnement
                 await db.query(`
-                    INSERT INTO notifications (user_id, actor_id, type, reference, date_creation) 
+                    INSERT INTO notifications (user_id, actor_id, type, commentaire_id, date_creation) 
                     VALUES (?, ?, 'follow', NULL, ?)
                 `, [followingId, followerId, new Date()]);
                 console.log("✅ Notification de follow insérée dans la BDD avec succès !");
