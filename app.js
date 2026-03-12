@@ -569,6 +569,21 @@ app.get('/api/suggest', async (req, res) => {
     } catch (e) { res.json([]); }
 });
 
+// API : RECHERCHE DE MEMBRES EN TEMPS RÉEL
+app.get('/api/search-users', async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q || q.length < 2) return res.json([]);
+        
+        // Cherche les pseudos qui contiennent la recherche (insensible à la casse)
+        const [users] = await db.query('SELECT pseudo, avatar FROM users WHERE pseudo LIKE ? LIMIT 5', [`%${q}%`]);
+        res.json(users);
+    } catch (e) {
+        res.status(500).json({ error: "Erreur lors de la recherche" });
+    }
+});
+
+
 app.post('/api/favorites/toggle', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
     try {

@@ -1,7 +1,17 @@
 {% extends "layout.njk" %}
 
 {% block content %}
-<div class="profile-page">
+<div class="profile-page" style="margin-top: -15px;">
+
+    <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 8px;">
+        <div class="user-search-container" style="position: relative; width: 100%; max-width: 280px;">
+            <div style="position: relative;">
+                <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #71717b; width: 16px;"></i>
+                <input type="text" id="user-search-input" placeholder="Rechercher un membre..." style="width: 100%; background: #18181b; border: 1px solid #27272a; color: white; padding: 10px 10px 10px 36px; border-radius: 12px; font-size: 14px; outline: none; box-sizing: border-box; transition: border-color 0.2s;" onfocus="this.style.borderColor='#d946ef'" onblur="this.style.borderColor='#27272a'">
+            </div>
+            <div id="user-search-results" style="position: absolute; top: 100%; left: 0; right: 0; background: #18181b; border: 1px solid #27272a; border-radius: 12px; margin-top: 8px; z-index: 50; display: none; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.8);"></div>
+        </div>
+    </div>
 
     <div class="profile-header-card" style="align-items: flex-start; display: flex; justify-content: space-between; gap: 40px; margin-bottom: 40px;">
         
@@ -37,14 +47,11 @@
             <div class="edit-form-fields" style="flex: 1; max-width: 400px; display: flex; flex-direction: column; gap: 12px;">
                 <input type="text" id="edit-pseudo" value="{{ user.name }}" class="edit-input-modern" placeholder="Pseudo">
                 <input type="email" id="edit-email" value="{{ user.email }}" class="edit-input-modern" placeholder="Adresse email" oninput="this.value = this.value.replace(/\s/g, '')">
-                
                 <div style="position: relative; width: 100%;">
                     <input type="password" id="edit-password" class="edit-input-modern" placeholder="Nouveau mot de passe" style="width: 100%; padding-right: 45px;">
                     <i data-lucide="eye" id="toggle-pwd-icon" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #71717b; width: 18px;" onclick="togglePassword()"></i>
                 </div>
-                
                 <textarea id="edit-bio" class="edit-textarea-modern" placeholder="Votre biographie...">{{ user.bio }}</textarea>
-                
                 <div style="display: flex; gap: 12px; margin-top: 10px;">
                     <button class="btn-save-modern" onclick="saveProfile()">Sauvegarder</button>
                     <button class="btn-cancel-modern" onclick="toggleEditProfile()">Annuler</button>
@@ -57,16 +64,12 @@
                 <span class="stat-number-modern" style="font-size: 28px; font-weight: 900; background: linear-gradient(90deg, #d946ef, #e12afb); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ user.stats.favoris | default(0) }}</span>
                 <span class="stat-label-modern" style="font-size: 10px; color: #71717b; font-weight: 800; letter-spacing: 1px;">FAVORIS</span>
             </div>
-            
             <div style="width: 1px; height: 30px; background: #27272a;"></div>
-
             <div class="stat-item-modern" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;" onclick="switchTab('comments', document.querySelectorAll('.tab-btn')[0])">
                 <span class="stat-number-modern" style="font-size: 28px; font-weight: 900; background: linear-gradient(90deg, #a855f7, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ user.stats.avis | default(0) }}</span>
                 <span class="stat-label-modern" style="font-size: 10px; color: #71717b; font-weight: 800; letter-spacing: 1px;">AVIS</span>
             </div>
-
             <div style="width: 1px; height: 30px; background: #27272a;"></div>
-
             <div class="stat-item-modern" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;" onclick="openFollowersModal('{{ user.id }}')">
                 <span class="stat-number-modern" style="font-size: 28px; font-weight: 900; background: linear-gradient(90deg, #f43f5e, #ff2056); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ user.stats.suivis | default(0) }}</span>
                 <span class="stat-label-modern" style="font-size: 10px; color: #71717b; font-weight: 800; letter-spacing: 1px;">SUIVIS</span>
@@ -74,20 +77,20 @@
         </div>
     </div>
 
-    <div class="profile-tabs" style="display: flex; gap: 30px; border-bottom: 1px solid #27272a; margin-bottom: 10px;">
-        <button class="tab-btn active" onclick="switchTab('comments', this)" style="padding-bottom: 10px;">
+    <div class="profile-tabs" style="display: flex; gap: 30px; border-bottom: 1px solid #27272a; margin-bottom: 16px;">
+        <button class="tab-btn active" onclick="switchTab('comments', this)">
             <i data-lucide="message-square" style="width: 18px; margin-right: 8px;"></i> Mes Avis
         </button>
-        <button class="tab-btn" onclick="switchTab('favorites', this)" style="padding-bottom: 10px;">
+        <button class="tab-btn" onclick="switchTab('favorites', this)">
             <i data-lucide="heart" style="width: 18px; margin-right: 8px;"></i> Mes Favoris
         </button>
-        <button class="tab-btn" onclick="switchTab('stats', this)" style="padding-bottom: 10px;">
+        <button class="tab-btn" onclick="switchTab('stats', this)">
             <i data-lucide="bar-chart-2" style="width: 18px; margin-right: 8px;"></i> Mon Impact
         </button>
     </div>
 
     <div id="tab-comments" class="tab-content" style="margin: 0 !important; padding: 0 !important;">
-        <div class="comments-list">
+        <div class="comments-list" style="margin: 0; padding: 0;">
             {% for comment in comments %}
             <div class="comment-card" style="background: #09090b; border: 1px solid #27272a; padding: 24px; border-radius: 16px; margin-bottom: 20px; display: flex; gap: 20px;">
                 <a href="{{ comment.url }}">
@@ -125,19 +128,21 @@
     </div>
 
     <div id="tab-favorites" class="tab-content hidden" style="margin: 0 !important; padding: 0 !important;">
-        <div class="favorites-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px;">
+        <div class="favorites-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; margin: 0; padding: 0;">
             {% for fav in favorites %}
             <a href="{{ fav.url }}" class="fav-card" style="background: rgba(24,24,27,0.4); border: 1px solid #27272a; border-radius: 16px; padding: 12px; text-decoration: none; color: inherit; transition: transform 0.2s;" onmouseover="this.style.background='rgba(39,39,42,0.6)'; this.style.transform='translateY(-5px)'" onmouseout="this.style.background='rgba(24,24,27,0.4)'; this.style.transform='translateY(0)'">
-                <img src="{{ fav.image }}" style="width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 12px; margin-bottom: 12px;">
+                <img src="{{ fav.image }}" alt="{{ fav.title }}" style="width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 12px; margin-bottom: 6px;">
                 <h4 style="margin: 0; color: white; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ fav.title }}</h4>
-                <p style="margin: 5px 0 0 0; color: #a1a1aa; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ fav.artist }}</p>
+                <p style="margin: 2px 0 0 0; color: #a1a1aa; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ fav.artist }}</p>
             </a>
+            {% else %}
+            <p style="color: #71717b; grid-column: 1 / -1; text-align: center; padding: 20px 0;">Aucun favori pour le moment.</p>
             {% endfor %}
         </div>
     </div>
 
     <div id="tab-stats" class="tab-content hidden" style="margin: 0 !important; padding: 0 !important;">
-        <div class="impact-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+        <div class="impact-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 0; padding: 0;">
             <div class="impact-card">
                 <div class="impact-icon" style="color: #d946ef;"><i data-lucide="star"></i></div>
                 <p>Tu as donné <strong>{{ impact.albumsRated }} avis</strong> ce mois-ci.</p>
@@ -147,7 +152,7 @@
                 <p>Tu as commenté <strong>{{ impact.musicCommented }} titres</strong>.</p>
             </div>
         </div>
-        <div class="did-you-know-banner" style="background: #1b0a2a; border: 1px solid rgba(217, 70, 239, 0.2); border-radius: 20px; padding: 30px; position: relative; overflow: hidden; margin-top: 40px;">
+        <div class="did-you-know-banner" style="background: #1b0a2a; border: 1px solid rgba(217, 70, 239, 0.2); border-radius: 20px; padding: 30px; position: relative; overflow: hidden; margin-top: 20px;">
             <h3 style="color: white; font-size: 18px; margin-top: 0; margin-bottom: 12px; font-weight: 800;">Le savais-tu ?</h3>
             <p style="color: #d4d4d8; font-size: 15px; max-width: 85%; position: relative; z-index: 2;">Les membres qui commentent plus de 10 albums par mois ont 3x plus de chances d'apparaître dans les recommandations de la communauté. Continue comme ça !</p>
             <i data-lucide="music" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); width: 140px; height: 140px; color: rgba(255, 255, 255, 0.03); z-index: 1;"></i>
@@ -193,6 +198,43 @@
 
 <script>
     if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    // SCRIPT DE RECHERCHE DE MEMBRES
+    const searchInput = document.getElementById('user-search-input');
+    const searchResults = document.getElementById('user-search-results');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', async (e) => {
+            const q = e.target.value.trim();
+            if (q.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            try {
+                const res = await fetch(`/api/search-users?q=${encodeURIComponent(q)}`);
+                const users = await res.json();
+                
+                if (users.length > 0) {
+                    searchResults.innerHTML = users.map(u => `
+                        <a href="/user/${u.pseudo}" style="display: flex; align-items: center; gap: 12px; padding: 12px; text-decoration: none; color: white; border-bottom: 1px solid #27272a; transition: background 0.2s;" onmouseover="this.style.background='#27272a'" onmouseout="this.style.background='transparent'">
+                            <img src="${u.avatar || 'https://ui-avatars.com/api/?name='+u.pseudo+'&background=27272a&color=fff'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
+                            <span style="font-weight: bold; font-size: 14px;">${u.pseudo}</span>
+                        </a>
+                    `).join('');
+                    searchResults.style.display = 'block';
+                } else {
+                    searchResults.innerHTML = '<div style="padding: 15px; color: #71717b; font-size: 13px; text-align: center;">Aucun membre trouvé</div>';
+                    searchResults.style.display = 'block';
+                }
+            } catch(err) {}
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.style.display = 'none';
+            }
+        });
+    }
 
     function switchTab(tabId, btnElement) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -286,7 +328,6 @@
         if(res.ok) window.location.reload();
     }
 
-    // GESTION DU POPUP DES ABONNÉS
     async function openFollowersModal(userId) {
         const modal = document.getElementById('followers-modal');
         const list = document.getElementById('followers-list');
