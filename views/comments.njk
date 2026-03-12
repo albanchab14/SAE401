@@ -60,7 +60,7 @@
                     {% endif %}
 
                     <button onclick="likeComment({{ c.id }}, this)" style="background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-left: 8px;">
-                        <i data-lucide="heart" class="{% if c.user_liked %}liked{% endif %}" style="width: 18px; height: 18px; {% if c.user_liked %}fill: #ff2056; color: #ff2056;{% endif %}"></i> 
+                        <i data-lucide="thumbs-up" class="{% if c.user_liked %}liked{% endif %}" style="width: 18px; height: 18px; {% if c.user_liked %}fill: #d946ef; color: #d946ef;{% endif %}"></i> 
                         <span class="like-count" style="font-size: 14px;">{{ c.total_likes }}</span>
                     </button>
                     <button onclick="openReportModal({{ c.id }}, '{{ c.pseudo }}')" style="background: none; border: none; color: inherit; cursor: pointer;" title="Signaler ce commentaire">
@@ -214,14 +214,27 @@
     // AUTRES (Like, Signaler)
     async function likeComment(id, btn) {
         const res = await fetch(`/api/comments/${id}/like`, { method: 'POST' });
+        
         if(res.ok) {
             const data = await res.json();
             const icon = btn.querySelector('svg');
             const countSpan = btn.querySelector('.like-count');
             let count = parseInt(countSpan.innerText);
-            if(data.liked) { icon.style.fill = '#ff2056'; icon.style.color = '#ff2056'; countSpan.innerText = count + 1; } 
-            else { icon.style.fill = 'none'; icon.style.color = 'inherit'; countSpan.innerText = count - 1; }
-        } else { alert("Connectez-vous pour aimer."); }
+            
+            if(data.liked) { 
+                icon.style.fill = '#d946ef'; // Violet au lieu de rouge
+                icon.style.color = '#d946ef'; 
+                countSpan.innerText = count + 1; 
+            } else { 
+                icon.style.fill = 'none'; 
+                icon.style.color = 'inherit'; 
+                countSpan.innerText = count - 1; 
+            }
+        } else { 
+            // ✨ NOUVEAU : On affiche la vraie erreur envoyée par app.js !
+            const errorData = await res.json();
+            alert(errorData.error || "Une erreur est survenue."); 
+        }
     }
 
     let commentToReport = null;

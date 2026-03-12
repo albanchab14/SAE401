@@ -344,9 +344,9 @@ app.get('/notifications', async (req, res) => {
 
         const notifications = rawNotifications.map(n => {
             let icon, color, bgColor, actionText;
-
+            // On adapte le style selon le type de notif
             if (n.type === 'like') {
-                icon = 'heart'; color = '#e12afb'; bgColor = 'rgba(225, 42, 251, 0.1)';
+                icon = 'thumbs-up'; color = '#e12afb'; bgColor = 'rgba(225, 42, 251, 0.1)';
                 actionText = `a aimé votre commentaire sur <a href="/album/${encodeURIComponent(n.reference)}" class="notif-link">${n.reference}</a>`;
             } else if (n.type === 'follow') {
                 icon = 'user-plus'; color = '#3b82f6'; bgColor = 'rgba(59, 130, 246, 0.1)';
@@ -585,16 +585,6 @@ app.post('/api/comments', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Connectez-vous pour commenter." });
     try {
         const { item_id, item_type, note, commentaire } = req.body;
-        await db.query("INSERT INTO commentaires (user_id, music_item_id, item_type, note, commentaire) VALUES (?, ?, ?, ?, ?)", 
-        [req.session.user.id, item_id, item_type, note, commentaire]);
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: "Erreur lors de l'envoi." }); }
-});
-
-app.post('/api/comments', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: "Connectez-vous pour commenter." });
-    try {
-        const { item_id, item_type, note, commentaire } = req.body;
         
         // On vérifie s'il a déjà commenté cet élément précis
         const [exist] = await db.query(
@@ -613,6 +603,50 @@ app.post('/api/comments', async (req, res) => {
         res.json({ success: true });
     } catch (e) { 
         res.status(500).json({ error: "Erreur lors de l'envoi." }); 
+    }
+});
+
+app.post('/api/comments/:id/like', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
+    
+    try {
+        const commentId = req.params.id;
+        const userId = req.session.user.id; 
+        
+        // 1. On vérifie à qui appartient le commentaire
+        const [comments] = await db.query("SELECT user_id, music_item_id FROM commentaires WHERE id = ?", [commentId]);
+        
+        if (comments.length > 0) {
+            const authorId = comments[0].user_id;
+            const reference = comments[0].music_item_id;
+
+            // ✨ SÉCURITÉ : On bloque si c'est son propre commentaire
+            if (userId === authorId) {
+                return res.status(400).json({ error: "Vous ne pouvez pas aimer votre propre avis." });
+            }
+
+            // 2. Logique de Like / Unlike
+            const [exist] = await db.query("SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
+            
+            if (exist.length > 0) {
+                await db.query("DELETE FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
+                res.json({ liked: false });
+            } else {
+                await db.query("INSERT INTO comment_likes (user_id, comment_id) VALUES (?, ?)", [userId, commentId]);
+                
+                // 3. Notification
+                await db.query(`
+                    INSERT INTO notifications (user_id, actor_id, type, reference, date_creation) 
+                    VALUES (?, ?, 'like', ?, ?)
+                `, [authorId, userId, reference, new Date()]);
+                
+                res.json({ liked: true });
+            }
+        } else {
+            res.status(404).json({ error: "Commentaire introuvable." });
+        }
+    } catch (e) { 
+        res.status(500).json({ error: "Erreur BDD" }); 
     }
 });
 
