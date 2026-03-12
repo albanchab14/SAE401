@@ -362,6 +362,31 @@ router.get('/notifications', async (req, res) => {
     } catch (error) { res.status(500).send("Erreur serveur."); }
 });
 
+// --- ACTIONS SUR LES NOTIFICATIONS ---
+
+// 1. Supprimer UNE notification (Clic sur la poubelle)
+router.post('/notifications/delete/:id', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ success: false });
+    try {
+        await db.query("DELETE FROM notifications WHERE id = ? AND user_id = ?", [req.params.id, req.session.user.id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
+// 2. Tout supprimer / marquer comme lu
+router.post('/notifications/read-all', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ success: false });
+    try {
+        // On marque tout comme lu (ou on supprime avec DELETE si tu préfères)
+        await db.query("DELETE FROM notifications WHERE user_id = ?", [req.session.user.id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
 router.get('/profil', async (req, res) => {
     if (!req.session.user) return res.redirect('/login');
     const userId = req.session.user.id;

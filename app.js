@@ -2,6 +2,7 @@ const express = require('express');
 const nunjucks = require('nunjucks');
 const path = require('path');
 const session = require('express-session');
+const db = require('./src/config/database');
 require('dotenv').config();
 
 const app = express();
@@ -21,9 +22,23 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// Variable globale de l'utilisateur pour Nunjucks
-app.use((req, res, next) => {
+// Variable globale de l'utilisateur ET compteur de notifications pour Nunjucks
+app.use(async (req, res, next) => {
     res.locals.user = req.session.user || null;
+    res.locals.unreadNotifs = 0; // Par défaut, 0 notification
+
+    // Si le mec est connecté, on compte ses notifications non lues
+    if (req.session.user) {
+        try {
+            const [[{ count }]] = await db.query(
+                'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0', 
+                [req.session.user.id]
+            );
+            res.locals.unreadNotifs = count;
+        } catch (e) {
+            console.error("Erreur compteur notifs:", e);
+        }
+    }
     next();
 });
 
