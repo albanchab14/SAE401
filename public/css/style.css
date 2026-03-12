@@ -1068,8 +1068,8 @@ body {
 .action-btn:hover { background: #52525b; color: white; transform: scale(1.05); }
 
 /* Spécifiques pour Valider et Supprimer (Admin Table) */
-.action-check { color: #22c55e; border-color: rgba(34, 197, 94, 0.3); background: rgba(34, 197, 94, 0.05); }
-.action-check:hover { background: rgba(34, 197, 94, 0.2); border-color: #22c55e; color: #22c55e; }
+.action-edit { color: #3b82f6; border-color: rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05); }
+.action-edit:hover { background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; color: #3b82f6; }
 
 .action-delete { color: #ef4444; border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); }
 .action-delete:hover { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #ef4444; }

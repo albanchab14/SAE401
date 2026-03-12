@@ -32,12 +32,12 @@
 
         <div class="public-profile-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 20px;">
             <div class="profile-stats-modern" style="display: flex; align-items: center; background: #0c0c0e; border: 1px solid #1a1a1c; border-radius: 16px; padding: 15px 30px;">
-                <div class="stat-item-modern" style="display: flex; flex-direction: column; align-items: center;">
+                <div class="stat-item-modern" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;" onclick="switchTab('favorites', document.querySelectorAll('.tab-btn')[0])">
                     <span class="stat-number-modern" style="font-size: 28px; font-weight: 900; background: linear-gradient(90deg, #d946ef, #e12afb); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ publicUser.stats.favoris | default(0) }}</span>
                     <span class="stat-label-modern" style="font-size: 10px; color: #71717b; font-weight: 800; letter-spacing: 1px;">FAVORIS</span>
                 </div>
                 <div style="width: 1px; height: 30px; background: #27272a; margin: 0 20px;"></div>
-                <div class="stat-item-modern" style="display: flex; flex-direction: column; align-items: center;">
+                <div class="stat-item-modern" style="display: flex; flex-direction: column; align-items: center; cursor: pointer;" onclick="switchTab('comments', document.querySelectorAll('.tab-btn')[1])">
                     <span class="stat-number-modern" style="font-size: 28px; font-weight: 900; background: linear-gradient(90deg, #a855f7, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ publicUser.stats.avis | default(0) }}</span>
                     <span class="stat-label-modern" style="font-size: 10px; color: #71717b; font-weight: 800; letter-spacing: 1px;">AVIS</span>
                 </div>
@@ -59,8 +59,11 @@
     </div>
 
     <div class="profile-tabs" style="display: flex; gap: 30px; border-bottom: 1px solid #27272a; margin-bottom: 16px;">
-        <button class="tab-btn active" style="padding-bottom: 10px; background: none; border: none; color: white; cursor: default; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #d946ef; margin-bottom: -1px; font-weight: bold;">
-            <i data-lucide="heart" style="width: 18px; color: #d946ef;"></i> Ses Favoris
+        <button class="tab-btn active" onclick="switchTab('favorites', this)">
+            <i data-lucide="heart" style="width: 18px; margin-right: 8px;"></i> Ses Favoris
+        </button>
+        <button class="tab-btn" onclick="switchTab('comments', this)">
+            <i data-lucide="message-square" style="width: 18px; margin-right: 8px;"></i> Ses Avis
         </button>
     </div>
 
@@ -74,6 +77,40 @@
             </a>
             {% else %}
             <p style="color: #71717b; grid-column: 1 / -1; text-align: center; padding: 20px 0;">Aucun favori pour le moment.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="tab-comments" class="tab-content hidden" style="margin: 0 !important; padding: 0 !important;">
+        <div class="comments-list" style="margin: 0; padding: 0;">
+            {% for comment in comments %}
+            <div class="comment-card" style="background: #09090b; border: 1px solid #27272a; padding: 24px; border-radius: 16px; margin-bottom: 20px; display: flex; gap: 20px;">
+                <a href="{{ comment.url }}">
+                    <img src="{{ comment.image }}" style="width: 100px; height: 100px; border-radius: 12px; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                </a>
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <a href="{{ comment.url }}" style="text-decoration: none; display: flex; align-items: center; gap: 8px; color: white;" onmouseover="this.style.color='#d946ef'" onmouseout="this.style.color='white'">
+                                <h3 style="margin: 0; font-size: 18px; transition: color 0.2s;">{{ comment.title }}</h3>
+                                <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                            </a>
+                            <span style="color: #a1a1aa; font-size: 13px;">{{ comment.artist }}</span>
+                        </div>
+                        <div style="color: #a1a1aa; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+                            <i data-lucide="thumbs-up" style="width: 14px;"></i> {{ comment.likes }}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 4px; margin: 12px 0;">
+                        {% for i in range(0, 5) %}
+                            <i data-lucide="star" style="width: 14px; height: 14px; fill: {% if i < comment.note %}#f0b100{% else %}none{% endif %}; color: #f0b100;"></i>
+                        {% endfor %}
+                    </div>
+                    <p style="color: #d4d4d8; font-size: 14px; line-height: 1.5; margin-bottom: 0;">{{ comment.commentaire }}</p>
+                </div>
+            </div>
+            {% else %}
+            <p style="color: #71717b;">Aucun avis pour le moment.</p>
             {% endfor %}
         </div>
     </div>
@@ -92,8 +129,20 @@
     </div>
 </div>
 
+<style>
+    .hidden { display: none !important; }
+</style>
+
 <script>
     if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    // NOUVEAU SCRIPT POUR SWITCHER LES ONGLETS
+    function switchTab(tabId, btnElement) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.getElementById('tab-' + tabId).classList.remove('hidden');
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        btnElement.classList.add('active');
+    }
 
     // SCRIPT DE RECHERCHE DE MEMBRES
     const searchInput = document.getElementById('user-search-input');

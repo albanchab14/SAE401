@@ -136,7 +136,7 @@ router.get('/search', async (req, res) => {
                         const [avgRow] = await db.query("SELECT AVG(note) as avgNote FROM commentaires WHERE music_item_id = ? AND item_type = 'artist'", [a.name]);
                         if(avgRow[0].avgNote) rating = parseFloat(avgRow[0].avgNote).toFixed(1);
                     } catch(e) {}
-                    return { title: a.name, artist: "Artiste", image: img, type: "Artiste", year: years || "2024", rating: rating };
+                    return { title: a.name, artist: "Artiste", image: img, type: "Artiste", year: "...", rating: rating };
                 }));
             } else {
                 let method = currentType === "Musique" ? "track.search&track=" : "album.search&album=";
@@ -155,7 +155,7 @@ router.get('/search', async (req, res) => {
                         const [avgRow] = await db.query("SELECT AVG(note) as avgNote FROM commentaires WHERE music_item_id = ? AND item_type = ?", [dbItemId, dbItemType]);
                         if(avgRow[0].avgNote) rating = parseFloat(avgRow[0].avgNote).toFixed(1);
                     } catch(e) {}
-                    return { title: item.name, artist: item.artist, image: img, type: currentType, year: years || "2024", rating: rating };
+                    return { title: item.name, artist: item.artist, image: img, type: currentType, year: "...", rating: rating };
                 }));
             }
         }
@@ -179,11 +179,23 @@ router.get('/details/:name', async (req, res) => {
             duration = `${min}:${sec.padStart(2, '0')}`;
         }
 
+        // VRAIE RECHERCHE DE L'ANNÉE DE SORTIE VIA DEEZER
+        let realYear = "Inconnue";
+        try {
+            const dzResp = await axios.get(`https://api.deezer.com/search/track?q=${encodeURIComponent(found.artist + ' ' + found.name)}&limit=1`);
+            if (dzResp.data && dzResp.data.data.length > 0) {
+                const dzTrackDetails = await axios.get(`https://api.deezer.com/track/${dzResp.data.data[0].id}`);
+                if (dzTrackDetails.data && dzTrackDetails.data.release_date) {
+                    realYear = dzTrackDetails.data.release_date.split('-')[0];
+                }
+            }
+        } catch(e) {}
+
         const trackData = {
             name: t.name, artist: t.artist.name, album: t.album?.title || "Single",
             image: t.album?.image[3]['#text'] || t.image?.[3]['#text'] || "https://via.placeholder.com/300",
             duration, playcount: formatNumber(t.playcount), listeners: formatNumber(t.listeners),
-            wiki: t.wiki?.summary || "Aucune description.", tags: t.toptags?.tag?.slice(0, 5) || [], year: "2024"
+            wiki: t.wiki?.summary || "Aucune description.", tags: t.toptags?.tag?.slice(0, 5) || [], year: realYear
         };
 
         const userId = req.session.user ? req.session.user.id : 0;
@@ -286,9 +298,25 @@ router.get('/album/:artist/:album', async (req, res) => {
         const totalHours = Math.floor(totalMs / 3600);
         const totalMins = Math.floor((totalMs % 3600) / 60);
 
+        // VRAIE RECHERCHE DU LABEL ET DE L'ANNÉE DE SORTIE VIA DEEZER
+        let realYear = alb.wiki ? alb.wiki.published.split(',')[0].split(' ').pop() : "Inconnue";
+        let realLabel = "Indépendant";
+
+        try {
+            const dzResp = await axios.get(`https://api.deezer.com/search/album?q=${encodeURIComponent(artist + ' ' + album)}&limit=1`);
+            if (dzResp.data && dzResp.data.data.length > 0) {
+                const dzAlbDetails = await axios.get(`https://api.deezer.com/album/${dzResp.data.data[0].id}`);
+                if (dzAlbDetails.data) {
+                    if (dzAlbDetails.data.release_date) realYear = dzAlbDetails.data.release_date.split('-')[0];
+                    if (dzAlbDetails.data.label) realLabel = dzAlbDetails.data.label;
+                }
+            }
+        } catch(e) {}
+
         const albumData = {
             title: alb.name, artist: alb.artist, image: alb.image[3]['#text'] || 'https://via.placeholder.com/300?text=No+Cover',
-            year: alb.wiki ? alb.wiki.published.split(',')[0].split(' ').pop() : "2024",
+            year: realYear,
+            label: realLabel, // <-- NOUVELLE VRAIE INFO
             trackCount: tracks.length, totalDuration: `${totalHours > 0 ? totalHours + 'h ' : ''}${totalMins}min`, tracks: tracks
         };
 
@@ -332,22 +360,6 @@ router.get('/notifications', async (req, res) => {
 
         res.render('notifications.njk', { notifications, page: 'notifications' });
     } catch (error) { res.status(500).send("Erreur serveur."); }
-});
-
-router.post('/notifications/read-all', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'Non connecté' });
-    try {
-        await db.query('DELETE FROM notifications WHERE user_id = ?', [req.session.user.id]);
-        res.json({ success: true });
-    } catch (error) { res.status(500).json({ success: false }); }
-});
-
-router.post('/notifications/delete/:id', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: 'Non connecté' });
-    try {
-        await db.query('DELETE FROM notifications WHERE id = ? AND user_id = ?', [req.params.id, req.session.user.id]);
-        res.json({ success: true });
-    } catch (error) { res.status(500).json({ success: false }); }
 });
 
 router.get('/profil', async (req, res) => {
@@ -415,6 +427,7 @@ router.get('/profil', async (req, res) => {
 router.get('/user/:pseudo', async (req, res) => {
     const pseudo = req.params.pseudo;
     const currentUserId = req.session.user ? req.session.user.id : 0;
+    const API_KEY = process.env.LASTFM_API_KEY;
 
     try {
         const [users] = await db.query('SELECT * FROM users WHERE pseudo = ?', [pseudo]);
@@ -431,8 +444,40 @@ router.get('/user/:pseudo', async (req, res) => {
             return { title: parts[0] || 'Inconnu', artist: parts[1] || '', image: parts[2] || 'https://via.placeholder.com/300', url: `/details/${encodeURIComponent(parts[0] || '')}` };
         });
 
-        let total_avis = 0; let total_suivis = 0; let isFollowing = false;
-        try { const [[{ count }]] = await db.query('SELECT COUNT(*) as count FROM commentaires WHERE user_id = ?', [userDb.id]); total_avis = count; } catch(e) {}
+        const [commentsDb] = await db.query(`
+            SELECT c.*, (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as likes
+            FROM commentaires c WHERE c.user_id = ? ORDER BY c.date_commentaire DESC
+        `, [userDb.id]);
+
+        for (let c of commentsDb) {
+            c.title = c.music_item_id; c.artist = "BPM"; c.image = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.music_item_id)}&background=27272a&color=fff&size=200`; c.url = "#";
+            try {
+                if (c.item_type === 'album') {
+                    let artist = "Inconnu"; let title = c.music_item_id;
+                    if (c.music_item_id.includes('::')) { let parts = c.music_item_id.split('::'); artist = parts[0].trim(); title = parts[1].trim(); } 
+                    else if (c.music_item_id.includes('-')) { let parts = c.music_item_id.split('-'); artist = parts[0].trim(); title = parts.slice(1).join('-').trim(); }
+                    c.artist = artist; c.title = title; c.url = `/album/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
+                    const r = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=album.getInfo&api_key=${API_KEY}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(title)}&format=json`);
+                    if (r.data && r.data.album && r.data.album.image) { let img = r.data.album.image[3]['#text']; if (img) c.image = img; }
+                } 
+                else if (c.item_type === 'track') {
+                    c.url = `/details/${encodeURIComponent(c.title)}`;
+                    const r = await axios.get(`https://ws.audioscrobbler.com/2.0/?method=track.search&track=${encodeURIComponent(c.title)}&api_key=${API_KEY}&format=json&limit=1`);
+                    if (r.data && r.data.results && r.data.results.trackmatches.track[0]) {
+                        const trk = r.data.results.trackmatches.track[0];
+                        c.artist = trk.artist; let img = trk.image[3]['#text'];
+                        if (img && !img.includes('2a96cbd8')) { c.image = img; } else { c.image = await getRealArtistImage(trk.artist); }
+                    }
+                } 
+                else if (c.item_type === 'artist') {
+                    c.artist = "Artiste"; c.title = c.music_item_id; c.url = `/artiste/${encodeURIComponent(c.title)}`; c.image = await getRealArtistImage(c.title);
+                }
+            } catch(e) { } 
+        }
+
+        let total_avis = commentsDb.length; 
+        let total_suivis = 0; let isFollowing = false;
+
         try { const [[{ count }]] = await db.query('SELECT COUNT(*) as count FROM follows WHERE following_id = ?', [userDb.id]); total_suivis = count; } catch(e) {}
         try {
             if (currentUserId) {
@@ -447,7 +492,7 @@ router.get('/user/:pseudo', async (req, res) => {
             stats: { favoris: formattedFavorites.length, avis: total_avis, suivis: total_suivis }
         };
 
-        res.render('public-profile.njk', { publicUser, favorites: formattedFavorites, isFollowing, page: 'public-profile' });
+        res.render('public-profile.njk', { publicUser, favorites: formattedFavorites, comments: commentsDb, isFollowing, page: 'public-profile' });
     } catch (e) { res.status(500).send("Erreur serveur"); }
 });
 

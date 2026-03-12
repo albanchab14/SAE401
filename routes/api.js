@@ -234,6 +234,31 @@ router.post('/user/:id/follow', async (req, res) => {
 });
 
 // --- API ADMIN : GESTION DU SITE ---
+// NOUVELLE ROUTE : MODIFIER UN UTILISATEUR MANUELLEMENT
+router.post('/admin/users/:id/edit', requireAdmin, async (req, res) => {
+    try {
+        const { pseudo, email, password } = req.body;
+        const userId = req.params.id;
+
+        let updateQuery = "UPDATE users SET pseudo = ?, email = ? WHERE id = ?";
+        let queryParams = [pseudo, email, userId];
+
+        // Si l'admin a tapé un nouveau mot de passe, on le hash et on l'ajoute à la requête
+        if (password && password.trim() !== "") {
+            const hashedPassword = await bcrypt.hash(password, 10);
+            updateQuery = "UPDATE users SET pseudo = ?, email = ?, password = ? WHERE id = ?";
+            queryParams = [pseudo, email, hashedPassword, userId];
+        }
+
+        await db.query(updateQuery, queryParams);
+        res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ error: "Erreur BDD : Ce pseudo ou email est peut-être déjà pris." });
+    }
+});
+
+
+
 router.post('/admin/maintenance', requireAdmin, async (req, res) => {
     try { await db.query("UPDATE site_settings SET is_maintenance = ? WHERE id = 1", [req.body.active ? 1 : 0]); res.json({ success: true }); } 
     catch (e) { res.status(500).json({ error: "Erreur BDD" }); }

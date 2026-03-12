@@ -53,7 +53,9 @@
                         <td>
                             <div class="user-cell">
                                 <img src="{{ u.avatar if u.avatar else 'https://ui-avatars.com/api/?name=' + u.pseudo + '&background=27272a&color=fff' }}">
-                                <strong style="color: #f4f4f5;">{{ u.pseudo }}</strong>
+                                <a href="/user/{{ u.pseudo | urlencode }}" style="color: #f4f4f5; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#d946ef'" onmouseout="this.style.color='#f4f4f5'">
+                                    <strong>{{ u.pseudo }}</strong>
+                                </a>
                             </div>
                         </td>
                         <td style="color: #a1a1aa;">{{ u.email }}</td>
@@ -70,6 +72,10 @@
                             </span>
                         </td>
                         <td style="text-align: right; display: flex; gap: 10px; align-items: center; justify-content: flex-end;">
+                            <button class="action-btn action-edit" title="Modifier l'utilisateur" onclick="openEditUserModal({{ u.id }}, '{{ u.pseudo | escape }}', '{{ u.email | escape }}')" style="margin:0;">
+                                <i data-lucide="edit-2"></i>
+                            </button>
+                            
                             <button class="action-btn" title="{% if u.is_banned %}Débannir l'utilisateur{% else %}Bannir l'utilisateur{% endif %}" onclick="toggleBan({{ u.id }}, this)" style="margin:0;">
                                 <i data-lucide="{% if u.is_banned %}check-circle{% else %}ban{% endif %}"></i>
                             </button>
@@ -97,7 +103,11 @@
                     {% for r in reports %}
                     <tr id="report-row-{{ r.comment_id }}">
                         <td style="color: #71717b;">#{{ r.comment_id }}</td>
-                        <td style="color: #f4f4f5;"><strong>{{ r.pseudo }}</strong></td>
+                        <td style="color: #f4f4f5;">
+                            <a href="/user/{{ r.pseudo | urlencode }}" style="color: #f4f4f5; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#d946ef'" onmouseout="this.style.color='#f4f4f5'">
+                                <strong>{{ r.pseudo }}</strong>
+                            </a>
+                        </td>
                         <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ r.comment }}">
                             {{ r.comment }}
                         </td>
@@ -113,10 +123,10 @@
                             <span style="background: rgba(254, 154, 0, 0.1); color: #fe9a00; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: bold;">x{{ r.count }}</span>
                         </td>
                         <td style="text-align: right; display: flex; gap: 10px; align-items: center; justify-content: flex-end;">
-                            <button class="action-btn action-check" title="Ignorer le signalement (Le commentaire reste)" onclick="ignoreReport({{ r.comment_id }})" style="margin:0;">
+                            <button class="action-btn action-check" title="Ignorer le signalement" onclick="ignoreReport({{ r.comment_id }})" style="margin:0;">
                                 <i data-lucide="check"></i>
                             </button>
-                            <button class="action-btn action-delete" title="Supprimer le commentaire de la BDD" onclick="deleteComment({{ r.comment_id }})" style="margin:0;">
+                            <button class="action-btn action-delete" title="Supprimer le commentaire" onclick="deleteComment({{ r.comment_id }})" style="margin:0;">
                                 <i data-lucide="trash-2"></i>
                             </button>
                         </td>
@@ -215,8 +225,103 @@
     </div>
 </div>
 
+<div id="edit-user-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div class="modal-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;"><i data-lucide="edit-2"></i></div>
+            <div>
+                <h3>Modifier l'utilisateur</h3>
+                <p class="modal-subtitle" id="edit-user-id-display"></p>
+            </div>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 15px; margin: 20px 0;">
+            <input type="hidden" id="edit-user-id">
+            <div>
+                <label style="color: #a1a1aa; font-size: 12px; font-weight: bold; margin-bottom: 5px; display: block; text-transform: uppercase;">Pseudo</label>
+                <input type="text" id="edit-user-pseudo" class="custom-select" style="cursor: text;">
+            </div>
+            <div>
+                <label style="color: #a1a1aa; font-size: 12px; font-weight: bold; margin-bottom: 5px; display: block; text-transform: uppercase;">Adresse Email</label>
+                <input type="email" id="edit-user-email" class="custom-select" style="cursor: text;">
+            </div>
+            <div>
+                <label style="color: #a1a1aa; font-size: 12px; font-weight: bold; margin-bottom: 5px; display: block; text-transform: uppercase;">Nouveau mot de passe</label>
+                <div style="position: relative;">
+                    <input type="password" id="edit-user-password" class="custom-select" style="cursor: text; padding-right: 40px;" placeholder="Laisser vide pour ne pas le changer">
+                    <i data-lucide="eye" id="toggle-edit-pwd" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #71717b; width: 18px;" onclick="toggleEditPassword()"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeEditUserModal()">Annuler</button>
+            <button class="btn-confirm" onclick="submitEditUser()" style="background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">
+                <i data-lucide="save" style="width: 16px; height: 16px; margin-right: 6px;"></i> Enregistrer
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
     if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    // SCRIPT POUR LE BOUTON OEIL (MOT DE PASSE ADMIN)
+    function toggleEditPassword() {
+        const pwdInput = document.getElementById('edit-user-password');
+        const icon = document.getElementById('toggle-edit-pwd');
+        if (pwdInput.type === 'password') {
+            pwdInput.type = 'text';
+            icon.setAttribute('data-lucide', 'eye-off');
+        } else {
+            pwdInput.type = 'password';
+            icon.setAttribute('data-lucide', 'eye');
+        }
+        lucide.createIcons();
+    }
+
+    function openEditUserModal(id, pseudo, email) {
+        document.getElementById('edit-user-id').value = id;
+        document.getElementById('edit-user-id-display').innerText = "ID Utilisateur : #" + id;
+        document.getElementById('edit-user-pseudo').value = pseudo;
+        document.getElementById('edit-user-email').value = email;
+        
+        // On remet le champ mot de passe à zéro et caché par défaut
+        const pwdInput = document.getElementById('edit-user-password');
+        pwdInput.value = ""; 
+        pwdInput.type = 'password';
+        document.getElementById('toggle-edit-pwd').setAttribute('data-lucide', 'eye');
+        lucide.createIcons();
+
+        document.getElementById('edit-user-modal').style.display = 'flex';
+    }
+
+    function closeEditUserModal() {
+        document.getElementById('edit-user-modal').style.display = 'none';
+    }
+
+    async function submitEditUser() {
+        const id = document.getElementById('edit-user-id').value;
+        const pseudo = document.getElementById('edit-user-pseudo').value;
+        const email = document.getElementById('edit-user-email').value;
+        const password = document.getElementById('edit-user-password').value;
+
+        try {
+            const res = await fetch(`/api/admin/users/${id}/edit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pseudo, email, password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert(data.error || "Erreur lors de la modification.");
+            }
+        } catch(e) {
+            alert("Erreur serveur.");
+        }
+    }
 
     async function toggleMaintenance(checkbox) {
         await fetch('/api/admin/maintenance', {
@@ -262,7 +367,6 @@
         if ((await fetch(`/api/admin/users/${id}`, { method: 'DELETE' })).ok) document.getElementById(`user-row-${id}`).remove();
     }
 
-    // NOUVELLE FONCTION BRANCHÉE À L'API
     async function ignoreReport(id) {
         if(confirm("Ignorer ce signalement ? (Le commentaire sera conservé sur le site)")) {
             const res = await fetch(`/api/admin/reports/${id}/ignore`, { method: 'POST' });
@@ -271,7 +375,6 @@
         }
     }
     
-    // NOUVELLE FONCTION BRANCHÉE À L'API
     async function deleteComment(id) {
         if (!confirm("Attention : Supprimer ce commentaire de la base de données pour infraction ?")) return;
         const res = await fetch(`/api/admin/comments/${id}`, { method: 'DELETE' });
