@@ -1014,4 +1014,104 @@ body {
     cursor: pointer;
 }
 
+
+
+/* =========================================
+   STYLE DU PANEL ADMINISTRATEUR
+========================================= */
+.admin-dashboard { padding: 40px; max-width: 1200px; margin: 0 auto; color: white; font-family: 'Inter', sans-serif; }
+.admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.admin-header h1 { font-size: 30px; font-weight: bold; margin: 0; }
+.admin-header p { color: #71717b; margin: 5px 0 0 0; }
+
+.maintenance-toggle { background: rgba(24,24,27,0.5); border: 1px solid #27272a; padding: 10px 20px; border-radius: 14px; display: flex; align-items: center; gap: 12px; color: #d4d4d8; font-weight: bold; }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
+.stat-card { background: rgba(24,24,27,0.4); border: 1px solid #27272a; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+.stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; justify-content: center; align-items: center; }
+.stat-title { color: #71717b; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0; font-weight: bold; }
+.stat-value { font-size: 32px; margin: 0; font-weight: bold; }
+
+.admin-section { background: rgba(24,24,27,0.4); border: 1px solid #27272a; border-radius: 20px; padding-top: 24px; overflow: hidden;}
+.section-top { display: flex; justify-content: space-between; align-items: center; padding: 0 24px 20px 24px; border-bottom: 1px solid #27272a; }
+.section-title { font-size: 20px; font-weight: bold; display: flex; align-items: center; gap: 12px; }
+
+.section-search { display: flex; align-items: center; background: #09090b; border: 1px solid #3f3f46; padding: 8px 16px; border-radius: 12px; gap: 10px; }
+.section-search input { background: transparent; border: none; color: white; outline: none; }
+.dropdown-suggestions { position: absolute; top: 110%; left: 0; width: 100%; background: #18181b; border: 1px solid #3f3f46; border-radius: 12px; display: none; overflow: hidden; z-index: 100; box-shadow: 0 10px 25px rgba(0,0,0,0.8); }
+.sugg-item { padding: 12px 20px; cursor: pointer; border-bottom: 1px solid #27272a; color: white; }
+.sugg-item:hover { background: #27272a; color: #e12afb; }
+
+.admin-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+.admin-table th { text-align: left; padding: 16px 24px; color: #71717b; font-size: 12px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #27272a; }
+.admin-table td { padding: 20px 24px; border-bottom: 1px solid #27272a; font-size: 14px; vertical-align: middle; }
+.admin-table tr:hover { background: #27272a; transition: 0.2s; }
+
+.user-cell { display: flex; align-items: center; gap: 12px; }
+.user-cell img { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #3f3f46; }
+
+.role-select { padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; outline: none; cursor: pointer; border: 1px solid transparent; transition: 0.2s; text-transform: uppercase; }
+.role-select:focus { border-color: #e12afb; }
+.role-admin { background: rgba(217, 70, 239, 0.1); color: #d946ef; }
+.role-user { background: rgba(63, 63, 71, 0.3); color: #a1a1aa; }
+.role-select option { background: #18181b; color: white; font-weight: bold; }
+
+.badge { padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
+.badge-warning { background: rgba(239, 68, 68, 0.1); color: #ef4444; font-size: 13px; }
+
+.status { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* Boutons d'action dans les tableaux */
+.action-btn { background: rgba(39,39,42,0.8); border: 1px solid #3f3f46; color: #a1a1aa; width: 36px; height: 36px; border-radius: 10px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+.action-btn:hover { background: #52525b; color: white; transform: scale(1.05); }
+
+/* Spécifiques pour Valider et Supprimer (Admin Table) */
+.action-check { color: #22c55e; border-color: rgba(34, 197, 94, 0.3); background: rgba(34, 197, 94, 0.05); }
+.action-check:hover { background: rgba(34, 197, 94, 0.2); border-color: #22c55e; color: #22c55e; }
+
+.action-delete { color: #ef4444; border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); }
+.action-delete:hover { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #ef4444; }
+
+.position-input { width: 44px; height: 44px; background: rgba(24,24,27,1); border: 1px solid #3f3f46; border-radius: 10px; color: #a1a1aa; font-weight: bold; text-align: center; font-size: 16px; transition: 0.2s; }
+.position-input:hover { border-color: #e12afb; color: white; }
+.position-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.artist-cell { display: flex; align-items: center; gap: 16px; }
+.artist-cell img { width: 48px; height: 48px; border-radius: 12px; object-fit: cover; }
+.artist-info { display: flex; flex-direction: column; gap: 4px; }
+.artist-desc-box { display: flex; gap: 20px; margin-top: 20px; align-items: center; padding-left: 64px; }
+.desc-text { background: rgba(9,9,11,1); border: 1px solid #3f3f46; border-radius: 14px; padding: 16px; color: #a1a1aa; font-size: 14px; flex-grow: 1; resize: none; height: 80px; outline: none; transition: 0.3s; }
+
+/* Switch Maintenance */
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #3f3f46; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: #00bc7d; }
+input:checked + .slider:before { transform: translateX(20px); }
+
+/* Popup Remplacement Artiste */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+.modal-box { background: #09090b; border: 1px solid #27272a; padding: 30px; border-radius: 24px; width: 420px; text-align: left; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+.modal-header { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
+.modal-icon { background: rgba(217, 70, 239, 0.1); color: #d946ef; width: 48px; height: 48px; border-radius: 14px; display: flex; justify-content: center; align-items: center; }
+.modal-box h3 { margin: 0; font-size: 20px; color: white; font-weight: bold; }
+.modal-subtitle { color: #71717b; font-size: 13px; margin: 4px 0 0 0; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+.modal-text { color: #a1a1aa; font-size: 15px; line-height: 1.5; margin: 20px 0; }
+
+.custom-select-wrapper { position: relative; margin-bottom: 30px; }
+.custom-select { width: 100%; padding: 14px 16px; background: #18181b; color: white; border: 1px solid #3f3f46; border-radius: 12px; font-size: 15px; appearance: none; outline: none; cursor: pointer; transition: 0.2s; }
+.custom-select:focus { border-color: #d946ef; }
+.select-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: #a1a1aa; width: 18px; pointer-events: none; }
+
+.modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
+.btn-cancel { background: transparent; color: #a1a1aa; border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+.btn-cancel:hover { background: rgba(255,255,255,0.05); color: white; }
+.btn-confirm { background: linear-gradient(135deg, #d946ef, #8b5cf6); color: white; border: none; padding: 12px 24px; border-radius: 12px; cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(217, 70, 239, 0.4); display: flex; align-items: center; }
+.btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(217, 70, 239, 0.6); }
+
+
+
 </style>
