@@ -625,35 +625,28 @@ app.post('/api/comments', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Erreur lors de l'envoi." }); }
 });
 
-app.post('/api/comments/:id/like', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
+app.post('/api/comments', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Connectez-vous pour commenter." });
     try {
-        const commentId = req.params.id;
-        const userId = req.session.user.id; 
+        const { item_id, item_type, note, commentaire } = req.body;
         
-        const [exist] = await db.query("SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
+        // On vérifie s'il a déjà commenté cet élément précis
+        const [exist] = await db.query(
+            "SELECT * FROM commentaires WHERE user_id = ? AND music_item_id = ? AND item_type = ?", 
+            [req.session.user.id, item_id, item_type]
+        );
         
         if (exist.length > 0) {
-            await db.query("DELETE FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
-            res.json({ liked: false });
-        } else {
-            await db.query("INSERT INTO comment_likes (user_id, comment_id) VALUES (?, ?)", [userId, commentId]);
-            const [comments] = await db.query("SELECT user_id, music_item_id FROM commentaires WHERE id = ?", [commentId]);
-            
-            if (comments.length > 0) {
-                const authorId = comments[0].user_id;
-                const reference = comments[0].music_item_id;
-                if (userId !== authorId) {
-                    await db.query(`
-                        INSERT INTO notifications (user_id, actor_id, type, reference, date_creation) 
-                        VALUES (?, ?, 'like', ?, ?)
-                    `, [authorId, userId, reference, new Date()]);
-                }
-            }
-            res.json({ liked: true });
+            return res.status(400).json({ error: "Vous avez déjà donné votre avis sur ce contenu." });
         }
+
+        // S'il n'a pas commenté, on insère
+        await db.query("INSERT INTO commentaires (user_id, music_item_id, item_type, note, commentaire) VALUES (?, ?, ?, ?, ?)", 
+        [req.session.user.id, item_id, item_type, note, commentaire]);
+        
+        res.json({ success: true });
     } catch (e) { 
-        res.status(500).json({ error: "Erreur BDD" }); 
+        res.status(500).json({ error: "Erreur lors de l'envoi." }); 
     }
 });
 
