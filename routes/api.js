@@ -200,17 +200,15 @@ router.delete('/comments/own/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
 
-// MODIFICATION : ADMIN PEUT MODIFIER N'IMPORTE QUEL COMMENTAIRE
+// MODIFICATION : ON REMET LA SÉCURITÉ (Seul l'auteur peut modifier son texte)
 router.put('/comments/own/:id', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
     try {
         const { note, commentaire } = req.body;
-        if (req.session.user.role === 'admin') {
-            await db.query("UPDATE commentaires SET note = ?, commentaire = ? WHERE id = ?", [note, commentaire, req.params.id]);
-        } else {
-            await db.query("UPDATE commentaires SET note = ?, commentaire = ?, date_commentaire = NOW() WHERE id = ? AND user_id = ?", 
-            [note, commentaire, req.params.id, req.session.user.id]);
-        }
+        // On exige que l'ID de l'utilisateur corresponde à l'auteur de l'avis (même si c'est un admin)
+        await db.query("UPDATE commentaires SET note = ?, commentaire = ?, date_commentaire = NOW() WHERE id = ? AND user_id = ?", 
+        [note, commentaire, req.params.id, req.session.user.id]);
+        
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
