@@ -38,8 +38,12 @@
     </div>
 
     <div class="admin-section">
-        <div class="section-top">
+        <div class="section-top" style="display: flex; justify-content: space-between; align-items: center;">
             <div class="section-title"><i data-lucide="users" style="color: #2b7fff;"></i> Gestion des utilisateurs</div>
+            <div class="section-search" style="position: relative;">
+                <i data-lucide="search" style="width: 16px; color:#71717b;"></i>
+                <input type="text" id="user-search-input" placeholder="Chercher pseudo ou email..." autocomplete="off" onkeyup="filterUsers()">
+            </div>
         </div>
         <div style="overflow-x: auto;">
             <table class="admin-table">
@@ -443,6 +447,26 @@
         });
         const data = await res.json();
         if (data.error) alert("Erreur : " + data.error); else window.location.reload();
+    }
+
+    // SCRIPT POUR FILTRER LES UTILISATEURS EN DIRECT
+    function filterUsers() {
+        const input = document.getElementById('user-search-input').value.toLowerCase();
+        // On cible toutes les lignes du tableau des utilisateurs
+        const rows = document.querySelectorAll('tr[id^="user-row-"]');
+        
+        rows.forEach(row => {
+            // Le pseudo est dans la 2ème colonne (index 1), l'email dans la 3ème (index 2)
+            const pseudo = row.cells[1].innerText.toLowerCase();
+            const email = row.cells[2].innerText.toLowerCase();
+            
+            // Si la recherche correspond au pseudo ou à l'email, on affiche, sinon on cache
+            if (pseudo.includes(input) || email.includes(input)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
     }
 </script>
 {% endblock %}
