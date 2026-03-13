@@ -5,6 +5,7 @@ const db = require('../src/config/database');
 const bcrypt = require('bcrypt');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs').promises;
 
 // CONFIGURATION UPLOAD AVATAR
 const storage = multer.diskStorage({
@@ -52,7 +53,23 @@ router.post('/profil/edit', upload.single('avatar'), async (req, res) => {
 router.delete('/profil/delete', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Non connecté" });
     try {
-        await db.query("DELETE FROM users WHERE id = ?", [req.session.user.id]);
+        const userId = req.session.user.id;
+
+        // 1. On cherche si l'utilisateur a un avatar stocké localement
+        const [users] = await db.query("SELECT avatar FROM users WHERE id = ?", [userId]);
+        if (users.length > 0 && users[0].avatar && users[0].avatar.startsWith('/images/')) {
+            // On reconstruit le chemin complet du fichier sur le serveur
+            const filePath = path.join(__dirname, '../public', users[0].avatar);
+            try { 
+                await fs.unlink(filePath); // Suppression physique du fichier
+                console.log("🗑️ Avatar supprimé du disque :", filePath);
+            } catch(err) { 
+                console.error("Erreur suppression image:", err.message); 
+            }
+        }
+
+        // 2. On supprime l'utilisateur de la BDD
+        await db.query("DELETE FROM users WHERE id = ?", [userId]);
         req.session.destroy();
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: "Erreur" }); }
@@ -295,10 +312,24 @@ router.post('/admin/reports/:id/ignore', requireAdmin, async (req, res) => {
     } catch(e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
 
-router.delete('/admin/comments/:id', requireAdmin, async (req, res) => {
+router.delete('/admin/users/:id', requireAdmin, async (req, res) => {
     try {
-        await db.query("DELETE FROM reports_commentaire WHERE commentaire_id = ?", [req.params.id]);
-        await db.query("DELETE FROM commentaires WHERE id = ?", [req.params.id]);
+        const userId = req.params.id;
+
+        // 1. On cherche l'avatar avant de supprimer l'utilisateur
+        const [users] = await db.query("SELECT avatar FROM users WHERE id = ?", [userId]);
+        if (users.length > 0 && users[0].avatar && users[0].avatar.startsWith('/images/')) {
+            const filePath = path.join(__dirname, '../public', users[0].avatar);
+            try { 
+                await fs.unlink(filePath); // Suppression physique du fichier
+                console.log("🗑️ Avatar supprimé par l'admin :", filePath);
+            } catch(err) { 
+                console.error("Erreur suppression image:", err.message); 
+            }
+        }
+
+        // 2. On supprime l'utilisateur de la BDD
+        await db.query("DELETE FROM users WHERE id = ?", [userId]);
         res.json({ success: true });
     } catch(e) { res.status(500).json({ error: "Erreur BDD" }); }
 });

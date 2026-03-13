@@ -26,7 +26,7 @@ router.get('/', requireAdmin, async (req, res) => {
     try {
         const [settings] = await db.query('SELECT is_maintenance FROM site_settings WHERE id = 1');
         const isMaintenance = settings.length > 0 ? settings[0].is_maintenance : false;
-        const [users] = await db.query("SELECT id, pseudo, email, role, is_banned FROM users ORDER BY id DESC LIMIT 50");
+        const [users] = await db.query("SELECT id, pseudo, email, role, is_banned, avatar FROM users ORDER BY id DESC LIMIT 50");
         const [reports] = await db.query(`SELECT c.id as comment_id, u.pseudo, c.commentaire as comment, c.music_item_id, c.item_type, rc.reason, COUNT(rc.id) as count FROM reports_commentaire rc JOIN commentaires c ON rc.commentaire_id = c.id JOIN users u ON c.user_id = u.id GROUP BY c.id, u.pseudo, c.commentaire, c.music_item_id, c.item_type, rc.reason ORDER BY count DESC`);
         
         reports.forEach(r => {
