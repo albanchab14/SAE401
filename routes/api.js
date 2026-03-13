@@ -142,30 +142,47 @@ router.post('/comments', async (req, res) => {
 
 router.post('/comments/:id/like', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
+    
     try {
         const commentId = req.params.id;
         const userId = req.session.user.id; 
         const [exist] = await db.query("SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
         
         if (exist.length > 0) {
+            // RETIRER LE LIKE
             await db.query("DELETE FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
             res.json({ liked: false });
         } else {
+            // 1. AJOUTER LE LIKE (Ça, ça marche)
             await db.query("INSERT INTO comment_likes (user_id, comment_id) VALUES (?, ?)", [userId, commentId]);
-            const [comments] = await db.query("SELECT user_id, music_item_id FROM commentaires WHERE id = ?", [commentId]);
-            if (comments.length > 0) {
-                const authorId = comments[0].user_id;
-                const reference = comments[0].music_item_id;
-                if (userId !== authorId) {
-                    await db.query(`
-                        INSERT INTO notifications (user_id, actor_id, type, commentaire_id, date_creation) 
-                        VALUES (?, ?, 'like', ?, ?)
-                    `, [authorId, userId, commentId, new Date()]);
+            
+            // 2. TENTER D'ENVOYER LA NOTIFICATION (Isolé pour ne pas tout faire planter)
+            try {
+                const [comments] = await db.query("SELECT user_id FROM commentaires WHERE id = ?", [commentId]);
+                if (comments.length > 0) {
+                    const authorId = comments[0].user_id;
+                    
+                    // On utilise != au lieu de !== pour éviter les bugs si l'un est un texte (String) et l'autre un nombre (Int)
+                    if (userId != authorId) {
+                        // ✨ On supprime 'date_creation' et 'new Date()', on laisse MySQL s'en charger !
+                        await db.query(`
+                            INSERT INTO notifications (user_id, actor_id, type, commentaire_id) 
+                            VALUES (?, ?, 'like', ?)
+                        `, [authorId, userId, commentId]);
+                    }
                 }
+            } catch (notifError) {
+                // Si la notification plante, on l'affiche dans la console de l'admin, mais l'utilisateur ne verra pas d'erreur !
+                console.error("🚨 Erreur SQL création notification Like :", notifError.message);
             }
+
+            // 3. ON RENVOIE LE SUCCÈS (Même si la notif a échoué)
             res.json({ liked: true });
         }
-    } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
+    } catch (e) { 
+        console.error("🚨 Erreur globale Route Like :", e);
+        res.status(500).json({ error: "Erreur BDD" }); 
+    }
 });
 
 router.post('/comments/:id/report', async (req, res) => {

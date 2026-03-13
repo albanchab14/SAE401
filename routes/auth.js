@@ -49,7 +49,11 @@ router.post('/register', async (req, res) => {
         
         req.session.user = { id: result.insertId, pseudo: username, role: 'utilisateur', avatar: null };
         res.redirect('/');
-    } catch (error) { res.render('register.njk', { page: 'register', error: "Une erreur est survenue lors de l'inscription." }); }
+    } catch (error) { 
+        // Ligne pour comprendre l'erreur en cas de problème lors de l'inscription (ex: problème de connexion à la BDD)
+        console.error("🚨 ERREUR CRITIQUE DANS L'INSCRIPTION :", error); 
+        res.render('register.njk', { page: 'register', error: "Erreur technique. Regarde ta console Node.js !" }); 
+    }
 });
 
 router.get('/logout', (req, res) => { 
