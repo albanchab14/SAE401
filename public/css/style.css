@@ -1111,6 +1111,3 @@ input:checked + .slider:before { transform: translateX(20px); }
 .btn-cancel:hover { background: rgba(255,255,255,0.05); color: white; }
 .btn-confirm { background: linear-gradient(135deg, #d946ef, #8b5cf6); color: white; border: none; padding: 12px 24px; border-radius: 12px; cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(217, 70, 239, 0.4); display: flex; align-items: center; }
 .btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(217, 70, 239, 0.6); }
-
-
-</style>
