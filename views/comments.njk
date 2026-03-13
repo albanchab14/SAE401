@@ -55,21 +55,23 @@
                 </div>
 
                 <div style="display: flex; gap: 16px; color: #71717b; align-items: center;">
+                    
                     {% if user and (user.id == c.user_id or user.role == 'admin') %}
-                        <button onclick="openEditModal({{ c.id }}, {{ c.note }})" style="background: none; border: none; color: inherit; cursor: pointer;" title="Modifier mon avis">
+                        <button onclick="openEditModal({{ c.id }}, {{ c.note }})" style="background: none; border: none; color: inherit; cursor: pointer;" title="Modifier l'avis">
                             <i data-lucide="edit-2" style="width: 18px; height: 18px;"></i>
                         </button>
-                        <button onclick="deleteOwnComment({{ c.id }})" style="background: none; border: none; color: #ff2056; cursor: pointer;" title="Supprimer mon avis">
+                        <button onclick="deleteOwnComment({{ c.id }})" style="background: none; border: none; color: #ff2056; cursor: pointer;" title="Supprimer l'avis">
                             <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
                         </button>
-                        
+                    {% endif %}
+                    
+                    {% if user and user.id == c.user_id %}
                         <div style="display: flex; align-items: center; gap: 6px; margin-left: 8px;">
                             <i data-lucide="thumbs-up" style="width: 18px; height: 18px; color: #d946ef;"></i> 
                             <span style="font-size: 14px; color: white; font-weight: bold;">{{ c.total_likes }}</span>
                         </div>
-
                     {% else %}
-                        <button onclick="likeComment({{ c.id }}, this)" style="background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-left: 8px;">
+                        <button onclick="likeComment({{ c.id }}, this)" style="background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-left: 8px;" title="Aimer ce commentaire">
                             <i data-lucide="thumbs-up" class="{% if c.user_liked %}liked{% endif %}" style="width: 18px; height: 18px; {% if c.user_liked %}fill: #d946ef; color: #d946ef;{% endif %}"></i> 
                             <span class="like-count" style="font-size: 14px;">{{ c.total_likes }}</span>
                         </button>
@@ -78,6 +80,7 @@
                             <i data-lucide="flag" style="width: 18px; height: 18px;"></i>
                         </button>
                     {% endif %}
+                    
                 </div>
             </div>
             <p id="comment-content-{{ c.id }}" style="color: #d4d4d8; line-height: 1.6; margin: 0; font-size: 15px;">{{ c.commentaire }}</p>
@@ -90,7 +93,7 @@
 
 <div id="edit-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 9999;">
     <div style="background: #18181b; border: 1px solid #3f3f46; border-radius: 16px; width: 450px; padding: 24px;">
-        <h3 style="color: white; margin-top: 0;">Modifier mon avis</h3>
+        <h3 style="color: white; margin-top: 0;">Modifier l'avis</h3>
         
         <div style="display: flex; gap: 10px; margin-bottom: 15px;" id="edit-star-rating">
             <div class="star-edit" data-val="1"><i data-lucide="star"></i></div>
@@ -180,7 +183,7 @@
         if(res.ok) window.location.reload(); else alert("Erreur.");
     }
 
-    // ACTIONS SUR SES PROPRES COMMENTAIRES
+    // ACTIONS SUR LES COMMENTAIRES (Éditer / Supprimer)
     async function deleteOwnComment(id) {
         if(!confirm("Supprimer définitivement cet avis ?")) return;
         const res = await fetch(`/api/comments/own/${id}`, { method: 'DELETE' });
@@ -223,7 +226,7 @@
         if(res.ok) window.location.reload();
     }
 
-    // AUTRES (Like, Signaler)
+    // ACTIONS SOCIALES (Liker / Signaler)
     async function likeComment(id, btn) {
         const res = await fetch(`/api/comments/${id}/like`, { method: 'POST' });
         
@@ -234,7 +237,7 @@
             let count = parseInt(countSpan.innerText);
             
             if(data.liked) { 
-                icon.style.fill = '#d946ef'; // Violet au lieu de rouge
+                icon.style.fill = '#d946ef'; 
                 icon.style.color = '#d946ef'; 
                 countSpan.innerText = count + 1; 
             } else { 
@@ -243,7 +246,6 @@
                 countSpan.innerText = count - 1; 
             }
         } else { 
-            // ✨ NOUVEAU : On affiche la vraie erreur envoyée par app.js !
             const errorData = await res.json();
             alert(errorData.error || "Une erreur est survenue."); 
         }
