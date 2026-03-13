@@ -55,7 +55,7 @@
                 </div>
 
                 <div style="display: flex; gap: 16px; color: #71717b; align-items: center;">
-                    {% if user and user.id == c.user_id %}
+                    {% if user and (user.id == c.user_id or user.role == 'admin') %}
                         <button onclick="openEditModal({{ c.id }}, {{ c.note }})" style="background: none; border: none; color: inherit; cursor: pointer;" title="Modifier mon avis">
                             <i data-lucide="edit-2" style="width: 18px; height: 18px;"></i>
                         </button>

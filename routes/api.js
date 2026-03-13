@@ -149,23 +149,18 @@ router.post('/comments/:id/like', async (req, res) => {
         const [exist] = await db.query("SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
         
         if (exist.length > 0) {
-            // RETIRER LE LIKE
             await db.query("DELETE FROM comment_likes WHERE user_id = ? AND comment_id = ?", [userId, commentId]);
             res.json({ liked: false });
         } else {
-            // 1. AJOUTER LE LIKE (Ça, ça marche)
             await db.query("INSERT INTO comment_likes (user_id, comment_id) VALUES (?, ?)", [userId, commentId]);
             
-            // 2. TENTER D'ENVOYER LA NOTIFICATION
             try {
-                // ✨ On récupère l'ID de l'auteur ET le nom de l'élément (music_item_id)
                 const [comments] = await db.query("SELECT user_id, music_item_id FROM commentaires WHERE id = ?", [commentId]);
                 if (comments.length > 0) {
                     const authorId = comments[0].user_id;
-                    const musicRef = comments[0].music_item_id; // Ex: "The Weeknd" ou "Daft Punk::Discovery"
+                    const musicRef = comments[0].music_item_id; 
                     
                     if (userId != authorId) {
-                        // ✨ On insère dans la colonne 'reference' !
                         await db.query(`
                             INSERT INTO notifications (user_id, actor_id, type, reference) 
                             VALUES (?, ?, 'like', ?)
@@ -175,12 +170,9 @@ router.post('/comments/:id/like', async (req, res) => {
             } catch (notifError) {
                 console.error("🚨 Erreur SQL création notification Like :", notifError.message);
             }
-
-            // 3. ON RENVOIE LE SUCCÈS (Même si la notif a échoué)
             res.json({ liked: true });
         }
     } catch (e) { 
-        console.error("🚨 Erreur globale Route Like :", e);
         res.status(500).json({ error: "Erreur BDD" }); 
     }
 });
@@ -195,20 +187,30 @@ router.post('/comments/:id/report', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
 
+// MODIFICATION : ADMIN PEUT SUPPRIMER N'IMPORTE QUEL COMMENTAIRE
 router.delete('/comments/own/:id', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
     try {
-        await db.query("DELETE FROM commentaires WHERE id = ? AND user_id = ?", [req.params.id, req.session.user.id]);
+        if (req.session.user.role === 'admin') {
+            await db.query("DELETE FROM commentaires WHERE id = ?", [req.params.id]);
+        } else {
+            await db.query("DELETE FROM commentaires WHERE id = ? AND user_id = ?", [req.params.id, req.session.user.id]);
+        }
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
 
+// MODIFICATION : ADMIN PEUT MODIFIER N'IMPORTE QUEL COMMENTAIRE
 router.put('/comments/own/:id', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: "Connectez-vous." });
     try {
         const { note, commentaire } = req.body;
-        await db.query("UPDATE commentaires SET note = ?, commentaire = ?, date_commentaire = NOW() WHERE id = ? AND user_id = ?", 
-        [note, commentaire, req.params.id, req.session.user.id]);
+        if (req.session.user.role === 'admin') {
+            await db.query("UPDATE commentaires SET note = ?, commentaire = ? WHERE id = ?", [note, commentaire, req.params.id]);
+        } else {
+            await db.query("UPDATE commentaires SET note = ?, commentaire = ?, date_commentaire = NOW() WHERE id = ? AND user_id = ?", 
+            [note, commentaire, req.params.id, req.session.user.id]);
+        }
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: "Erreur BDD" }); }
 });
@@ -244,35 +246,24 @@ router.post('/user/:id/follow', async (req, res) => {
     try {
         const [exist] = await db.query("SELECT * FROM follows WHERE follower_id = ? AND following_id = ?", [followerId, followingId]);
         if (exist.length > 0) {
-            // Désabonnement
             await db.query("DELETE FROM follows WHERE follower_id = ? AND following_id = ?", [followerId, followingId]);
             res.json({ isFollowing: false });
         } else {
-            // Abonnement
             await db.query("INSERT INTO follows (follower_id, following_id) VALUES (?, ?)", [followerId, followingId]);
-            
-            // LE TEST DE NOTIFICATION
             try {
-                // ✨ On utilise 'reference' et on enlève 'date_creation' (géré par MySQL)
                 await db.query(`
                     INSERT INTO notifications (user_id, actor_id, type, reference) 
                     VALUES (?, ?, 'follow', NULL)
                 `, [followingId, followerId]);
-                console.log("✅ Notification de follow insérée dans la BDD avec succès !");
-            } catch (notifError) {
-                console.error("❌ Erreur SQL lors de la notification :", notifError.message);
-            }
-            
+            } catch (notifError) {}
             res.json({ isFollowing: true });
         }
     } catch (e) { 
-        console.error("Erreur globale Follow:", e);
         res.status(500).json({ error: "Erreur BDD" }); 
     }
 });
 
 // --- API ADMIN : GESTION DU SITE ---
-// NOUVELLE ROUTE : MODIFIER UN UTILISATEUR MANUELLEMENT
 router.post('/admin/users/:id/edit', requireAdmin, async (req, res) => {
     try {
         const { pseudo, email, password } = req.body;
@@ -281,7 +272,6 @@ router.post('/admin/users/:id/edit', requireAdmin, async (req, res) => {
         let updateQuery = "UPDATE users SET pseudo = ?, email = ? WHERE id = ?";
         let queryParams = [pseudo, email, userId];
 
-        // Si l'admin a tapé un nouveau mot de passe, on le hash et on l'ajoute à la requête
         if (password && password.trim() !== "") {
             const hashedPassword = await bcrypt.hash(password, 10);
             updateQuery = "UPDATE users SET pseudo = ?, email = ?, password = ? WHERE id = ?";
@@ -294,8 +284,6 @@ router.post('/admin/users/:id/edit', requireAdmin, async (req, res) => {
         res.status(500).json({ error: "Erreur BDD : Ce pseudo ou email est peut-être déjà pris." });
     }
 });
-
-
 
 router.post('/admin/maintenance', requireAdmin, async (req, res) => {
     try { await db.query("UPDATE site_settings SET is_maintenance = ? WHERE id = 1", [req.body.active ? 1 : 0]); res.json({ success: true }); } 
