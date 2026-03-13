@@ -156,23 +156,23 @@ router.post('/comments/:id/like', async (req, res) => {
             // 1. AJOUTER LE LIKE (Ça, ça marche)
             await db.query("INSERT INTO comment_likes (user_id, comment_id) VALUES (?, ?)", [userId, commentId]);
             
-            // 2. TENTER D'ENVOYER LA NOTIFICATION (Isolé pour ne pas tout faire planter)
+            // 2. TENTER D'ENVOYER LA NOTIFICATION
             try {
-                const [comments] = await db.query("SELECT user_id FROM commentaires WHERE id = ?", [commentId]);
+                // ✨ On récupère l'ID de l'auteur ET le nom de l'élément (music_item_id)
+                const [comments] = await db.query("SELECT user_id, music_item_id FROM commentaires WHERE id = ?", [commentId]);
                 if (comments.length > 0) {
                     const authorId = comments[0].user_id;
+                    const musicRef = comments[0].music_item_id; // Ex: "The Weeknd" ou "Daft Punk::Discovery"
                     
-                    // On utilise != au lieu de !== pour éviter les bugs si l'un est un texte (String) et l'autre un nombre (Int)
                     if (userId != authorId) {
-                        // ✨ On supprime 'date_creation' et 'new Date()', on laisse MySQL s'en charger !
+                        // ✨ On insère dans la colonne 'reference' !
                         await db.query(`
-                            INSERT INTO notifications (user_id, actor_id, type, commentaire_id) 
+                            INSERT INTO notifications (user_id, actor_id, type, reference) 
                             VALUES (?, ?, 'like', ?)
-                        `, [authorId, userId, commentId]);
+                        `, [authorId, userId, musicRef]);
                     }
                 }
             } catch (notifError) {
-                // Si la notification plante, on l'affiche dans la console de l'admin, mais l'utilisateur ne verra pas d'erreur !
                 console.error("🚨 Erreur SQL création notification Like :", notifError.message);
             }
 
@@ -253,11 +253,11 @@ router.post('/user/:id/follow', async (req, res) => {
             
             // LE TEST DE NOTIFICATION
             try {
-                // On met NULL pour commentaire_id vu que c'est un abonnement
+                // ✨ On utilise 'reference' et on enlève 'date_creation' (géré par MySQL)
                 await db.query(`
-                    INSERT INTO notifications (user_id, actor_id, type, commentaire_id, date_creation) 
-                    VALUES (?, ?, 'follow', NULL, ?)
-                `, [followingId, followerId, new Date()]);
+                    INSERT INTO notifications (user_id, actor_id, type, reference) 
+                    VALUES (?, ?, 'follow', NULL)
+                `, [followingId, followerId]);
                 console.log("✅ Notification de follow insérée dans la BDD avec succès !");
             } catch (notifError) {
                 console.error("❌ Erreur SQL lors de la notification :", notifError.message);
