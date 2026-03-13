@@ -37,10 +37,11 @@
                     <img src="{{ c.avatar if c.avatar else 'https://ui-avatars.com/api/?name=' + c.pseudo + '&background=27272a&color=fff' }}" style="width: 48px; height: 48px; border-radius: 50%;">
                     <div>
                         <div style="display: flex; align-items: center; gap: 12px;">
-                            <strong style="color: white; font-size: 18px;">{{ c.pseudo }}</strong>
+                            <a href="/user/{{ c.pseudo }}" style="color: white; font-size: 18px; font-weight: bold; text-decoration: none; transition: 0.2s;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                {{ c.pseudo }}
+                            </a>
                             <span style="color: #71717b; font-size: 14px;">{{ c.time_ago }}</span>
                         </div>
-                        
                         <div style="display: flex; gap: 4px; margin-top: 6px;">
                             {% for i in range(0, 5) %}
                                 {% if i < c.note %}
